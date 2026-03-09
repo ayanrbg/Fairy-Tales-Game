@@ -42,4 +42,25 @@ Assets/
 - `AI/ui-flow.md` — all screens and navigation description based on UI mockups
 - `AI/changelog.md` — this file
 
-**Next step:** Phase 1 — Core (API + Data)
+### Phase 1 — Core (API + Data) ✅
+
+**Models** (5 files in `Scripts/FairyTales/Models/`):
+- `AuthModels.cs` — LoginRequest, RegisterRequest, LoginResponse, RegisterResponse, ProfileData, ProfileUpdateRequest/Response
+- `TaleModels.cs` — TaleSummary, TaleDetail, PersonalizeRequest/Response
+- `VoiceModels.cs` — CloneResponse, DeleteVoiceResponse
+- `NarrationModels.cs` — NarrateAllResponse, NarrationStatusResponse
+- `DraftModels.cs` — Draft, DraftCreateRequest/Response, DraftDeleteResponse
+
+**API Client** (`Scripts/FairyTales/Api/ApiClient.cs`):
+- MonoBehaviour with configurable baseUrl
+- Methods: Get, GetAudio, PostJson, Post, PostForAudio, PostMultipart, PutJson, Delete
+- Auto JWT auth via Bearer token
+- Unified error formatting
+
+**Services** (4 files in `Scripts/FairyTales/Api/`):
+- `AuthService.cs` — Login, Register, GetProfile, UpdateProfile, TryRestoreSession, Logout
+- `TalesService.cs` — GetTales, GetTale, Personalize
+- `VoiceService.cs` — CloneVoice, DeleteVoice, GetDrafts, CreateDraft, GetDraft, DeleteDraft
+- `NarrationService.cs` — NarratePage, NarrateAll, GetNarrationStatus, DownloadNarratedPage
+
+**Next step:** Phase 2 — Audio
