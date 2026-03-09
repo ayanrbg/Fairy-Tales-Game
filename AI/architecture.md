@@ -111,16 +111,16 @@ NarrationService:
   DownloadNarratedPage() → GET  /api/tales/:id/narration/:page
 ```
 
-### Phase 2 — Audio
+### Phase 2 — Audio ✅
 11. MicRecorder.cs — mic recording → WAV
 12. NarrationPlayer.cs — play MP3 from bytes
 13. BackgroundMusicManager.cs — global music toggle, per-tale tracks
 14. DefaultNarrationProvider.cs — play pre-baked audio from Assets
 
-### Phase 3 — UI Framework
+### Phase 3 — UI Framework ✅
 15. ScreenManager.cs — screen switching with DOTween fades
 16. BaseScreen.cs — base class (Show/Hide with animations)
-17. Shared UI prefabs (buttons, panels, header)
+17. Shared UI prefabs (buttons, panels, header) — в Unity Editor
 
 ### Phase 4 — Onboarding Screens
 18. LanguageSelectScreen
