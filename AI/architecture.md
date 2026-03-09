@@ -75,13 +75,41 @@ LanguageSelect → Personalization → Loading → Library
 2. Newtonsoft Json added to manifest
 3. Folder structure created
 
-### Phase 1 — Core (API + Data)
-5. ApiClient.cs — HTTP client (GET/POST/DELETE/Multipart/Audio)
-6. Models (Auth, Voice, Tales, Draft, Profile)
-7. AuthService.cs — login/register, session restore
-8. TalesService.cs — tales list, details, personalization
-9. VoiceService.cs — voice clone, drafts CRUD
-10. NarrationService.cs — AI narration + default playback
+### Phase 1 — Core (API + Data) ✅
+5. ApiClient.cs — HTTP client (GET/POST/PUT/DELETE/Multipart/Audio)
+6. Models: AuthModels, TaleModels, VoiceModels, NarrationModels, DraftModels
+7. AuthService.cs — Login, Register, GetProfile, UpdateProfile, TryRestoreSession, Logout
+8. TalesService.cs — GetTales, GetTale, Personalize
+9. VoiceService.cs — CloneVoice, DeleteVoice, GetDrafts, CreateDraft, GetDraft, DeleteDraft
+10. NarrationService.cs — NarratePage, NarrateAll, GetNarrationStatus, DownloadNarratedPage
+
+#### Service → Endpoint Mapping
+```
+AuthService:
+  Login()           → POST /api/auth/login
+  Register()        → POST /api/auth/register
+  GetProfile()      → GET  /api/user/profile
+  UpdateProfile()   → PUT  /api/user/profile
+
+TalesService:
+  GetTales()        → GET  /api/tales?lang=
+  GetTale()         → GET  /api/tales/:id
+  Personalize()     → POST /api/tales/:id/personalize
+
+VoiceService:
+  CloneVoice()      → POST   /api/voice/clone
+  DeleteVoice()     → DELETE /api/voice
+  GetDrafts()       → GET    /api/voice/drafts
+  CreateDraft()     → POST   /api/voice/drafts
+  GetDraft()        → GET    /api/voice/drafts/:id
+  DeleteDraft()     → DELETE /api/voice/drafts/:id
+
+NarrationService:
+  NarratePage()          → POST /api/tales/:id/narrate?page=N
+  NarrateAll()           → POST /api/tales/:id/narrate-all
+  GetNarrationStatus()   → GET  /api/tales/:id/narration-status
+  DownloadNarratedPage() → GET  /api/tales/:id/narration/:page
+```
 
 ### Phase 2 — Audio
 11. MicRecorder.cs — mic recording → WAV
