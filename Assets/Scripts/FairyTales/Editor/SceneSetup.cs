@@ -1,10 +1,12 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.UI.Core;
+using FairyTales.UI.Onboarding;
 
 namespace FairyTales.Editor
 {
@@ -16,6 +18,7 @@ namespace FairyTales.Editor
             CreateServices();
             CreateAudio();
             CreateUICanvas();
+            OnboardingSetup.Setup();
 
             Debug.Log("[SceneSetup] Done! Don't forget to save the scene.");
         }
@@ -58,7 +61,7 @@ namespace FairyTales.Editor
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<EventSystem>();
-                es.AddComponent<StandaloneInputModule>();
+                es.AddComponent<InputSystemUIInputModule>();
                 Undo.RegisterCreatedObjectUndo(es, "Create EventSystem");
             }
 
@@ -78,12 +81,14 @@ namespace FairyTales.Editor
             var sm = canvas.AddComponent<ScreenManager>();
             Undo.RegisterCreatedObjectUndo(canvas, "Create UICanvas");
 
-            // Screen stubs
-            string[] screens =
+            // Screens with real components (onboarding)
+            CreateScreen<LanguageSelectScreen>(canvas.transform);
+            CreateScreen<PersonalizationScreen>(canvas.transform);
+            CreateScreen<LoadingScreen>(canvas.transform);
+
+            // Screen stubs (not yet implemented)
+            string[] stubs =
             {
-                "LanguageSelectScreen",
-                "PersonalizationScreen",
-                "LoadingScreen",
                 "LibraryScreen",
                 "TaleDetailScreen",
                 "ReadingScreen",
@@ -91,26 +96,41 @@ namespace FairyTales.Editor
                 "VoiceRecordingScreen",
                 "NarrationProgressScreen"
             };
-
-            foreach (var name in screens)
+            foreach (var name in stubs)
                 CreateScreenStub(canvas.transform, name);
 
-            // Set initial screen reference via SerializedObject
+            // Set initial screen = LanguageSelectScreen
             var so = new SerializedObject(sm);
             var prop = so.FindProperty("initialScreen");
-            var first = canvas.transform.GetChild(0);
-            prop.objectReferenceValue = first.GetComponent<CanvasGroup>();
-            // CanvasGroup isn't BaseScreen yet — will be set when real screens exist
+            prop.objectReferenceValue =
+                canvas.transform.GetChild(0).GetComponent<BaseScreen>();
             so.ApplyModifiedProperties();
+        }
+
+        private static void CreateScreen<T>(Transform parent)
+            where T : BaseScreen
+        {
+            var name = typeof(T).Name;
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            go.AddComponent<CanvasGroup>();
+            go.AddComponent<T>();
+            go.SetActive(false);
         }
 
         private static void CreateScreenStub(Transform parent, string name)
         {
-            var go = new GameObject(name);
+            var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
 
-            // Full-stretch RectTransform
-            var rt = go.AddComponent<RectTransform>();
+            var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;

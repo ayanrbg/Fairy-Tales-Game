@@ -121,4 +121,53 @@ Assets/Resources/Music/{taleId}.wav
   - Idempotent — safe to run multiple times
   - All operations support Undo
 
-**Next step:** Phase 4 — Onboarding Screens
+---
+
+## Session 3 — 2026-03-09
+
+### Phase 4 — Onboarding Screens ✅
+
+**Files created** (3 files in `Scripts/FairyTales/UI/Onboarding/`):
+
+- `LanguageSelectScreen.cs` — выбор языка (RU/KZ/EN)
+  - SerializeField кнопки + визуальные индикаторы выбора
+  - Сохраняет `ft_lang` в PlayerPrefs
+  - Навигация → PersonalizationScreen
+
+- `PersonalizationScreen.cs` — имя ребёнка + пол
+  - TMP_InputField для имени, 2 кнопки пола
+  - Кнопка смены языка → назад к LanguageSelectScreen
+  - Валидация: не даёт продолжить с пустым именем
+  - Сохраняет `ft_childName`, `ft_gender` в PlayerPrefs
+  - Навигация → LoadingScreen
+
+- `LoadingScreen.cs` — регистрация + персонализация
+  - Slider прогресс-бар + TMP_Text статус
+  - Полный flow: Register → GetTales → Personalize каждую сказку
+  - Прогресс обновляется по шагам
+  - Event OnLoadingComplete для внешней подписки
+  - Сохраняет `ft_onboarded` флаг
+  - Генерирует userId (GUID) если не существует
+
+**Updated:**
+- `Editor/SceneSetup.cs` — теперь добавляет реальные компоненты
+  - CreateScreen<T>() — generic метод для экранов с компонентами
+  - LanguageSelectScreen как initialScreen в ScreenManager
+
+**PlayerPrefs keys (onboarding):**
+- `ft_lang` — язык (ru/kz/en)
+- `ft_childName` — имя ребёнка
+- `ft_gender` — пол (male/female)
+- `ft_userId` — GUID пользователя
+- `ft_onboarded` — флаг завершения онбординга (1)
+
+---
+
+## Session 4 — 2026-03-10
+
+### Bugfix — Scene Setup
+
+- `Editor/SceneSetup.cs` — теперь вызывает `OnboardingSetup.Setup()` после создания Canvas, чтобы UI-элементы онбординга создавались автоматически
+- `Editor/OnboardingSetup.cs` + `Editor/SceneSetup.cs` — все `new GameObject(...)` теперь создаются с `typeof(RectTransform)` для корректной работы на Canvas (ранее создавались с обычным Transform)
+
+**Next step:** Phase 5 — Library

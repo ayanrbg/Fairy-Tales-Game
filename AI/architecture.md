@@ -122,7 +122,7 @@ NarrationService:
 16. BaseScreen.cs — base class (Show/Hide with animations)
 17. Shared UI prefabs (buttons, panels, header) — в Unity Editor
 
-### Phase 4 — Onboarding Screens
+### Phase 4 — Onboarding Screens ✅
 18. LanguageSelectScreen
 19. PersonalizationScreen
 20. LoadingScreen (progress bar + cat animation)
