@@ -113,8 +113,9 @@ namespace FairyTales.Editor
             navSo.FindProperty("pageText").objectReferenceValue = pageTmp;
             navSo.ApplyModifiedProperties();
 
-            // Wire ReadingScreen
+            // Wire ReadingScreen (no slide — fullscreen illustration)
             var so = new SerializedObject(screen);
+            so.FindProperty("slideFromBottom").boolValue = false;
             so.FindProperty("pageNavigator").objectReferenceValue = nav;
             so.FindProperty("btnHome").objectReferenceValue =
                 btnHome.GetComponent<Button>();

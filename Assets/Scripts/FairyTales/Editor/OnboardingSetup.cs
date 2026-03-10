@@ -8,7 +8,6 @@ namespace FairyTales.Editor
 {
     public static class OnboardingSetup
     {
-        private static readonly Color BgColor = new(0.12f, 0.08f, 0.18f);
         private static readonly Color BtnColor = new(0.55f, 0.36f, 0.85f);
         private static readonly Color BtnSelectedColor = new(0.72f, 0.52f, 1f);
         private static readonly Color TextColor = Color.white;
@@ -35,7 +34,6 @@ namespace FairyTales.Editor
             if (screen.transform.childCount > 0) return;
 
             var root = screen.transform;
-            AddBackground(root);
 
             var title = CreateTMP(root, "Title", "Выберите язык",
                 36, TextAlignmentOptions.Center,
@@ -83,7 +81,6 @@ namespace FairyTales.Editor
             if (screen.transform.childCount > 0) return;
 
             var root = screen.transform;
-            AddBackground(root);
 
             CreateTMP(root, "Title", "Как зовут ребёнка?",
                 36, TextAlignmentOptions.Center,
@@ -137,7 +134,6 @@ namespace FairyTales.Editor
             if (screen.transform.childCount > 0) return;
 
             var root = screen.transform;
-            AddBackground(root);
 
             var statusText = CreateTMP(root, "StatusText",
                 "Подготавливаем библиотеку...",
@@ -158,16 +154,6 @@ namespace FairyTales.Editor
         }
 
         // ── UI Helpers ───────────────────────────────────────
-
-        private static void AddBackground(Transform parent)
-        {
-            var go = new GameObject("Background", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>();
-            img.color = BgColor;
-            Stretch(go);
-            go.transform.SetAsFirstSibling();
-        }
 
         private static GameObject CreateTMP(Transform parent, string name,
             string text, int fontSize, TextAlignmentOptions align,

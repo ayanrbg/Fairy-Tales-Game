@@ -85,6 +85,17 @@ namespace FairyTales.Editor
             var sm = canvas.AddComponent<ScreenManager>();
             Undo.RegisterCreatedObjectUndo(canvas, "Create UICanvas");
 
+            // Shared background (always visible behind all screens)
+            var bgGo = new GameObject("SharedBackground", typeof(RectTransform));
+            bgGo.transform.SetParent(canvas.transform, false);
+            var bgRt = bgGo.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.offsetMin = Vector2.zero;
+            bgRt.offsetMax = Vector2.zero;
+            var bgImg = bgGo.AddComponent<Image>();
+            bgImg.color = new Color(0.12f, 0.08f, 0.18f);
+
             // Screens with real components (onboarding)
             CreateScreen<LanguageSelectScreen>(canvas.transform);
             CreateScreen<PersonalizationScreen>(canvas.transform);
@@ -115,12 +126,13 @@ namespace FairyTales.Editor
             // Toast
             CreateToast(canvas.transform);
 
-            // Set initial screen = LanguageSelectScreen, onboarded = LibraryScreen
+            // Set initial screen, onboarded screen, shared background
             var so = new SerializedObject(sm);
             so.FindProperty("initialScreen").objectReferenceValue =
-                canvas.transform.GetChild(0).GetComponent<BaseScreen>();
+                canvas.GetComponentInChildren<LanguageSelectScreen>(true);
             so.FindProperty("onboardedScreen").objectReferenceValue =
                 canvas.GetComponentInChildren<LibraryScreen>(true);
+            so.FindProperty("sharedBackground").objectReferenceValue = bgImg;
             so.ApplyModifiedProperties();
         }
 

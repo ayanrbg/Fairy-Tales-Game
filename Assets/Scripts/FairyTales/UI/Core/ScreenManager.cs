@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace FairyTales.UI.Core
 {
@@ -7,9 +9,11 @@ namespace FairyTales.UI.Core
     {
         [SerializeField] private BaseScreen initialScreen;
         [SerializeField] private BaseScreen onboardedScreen;
+        [SerializeField] private Image sharedBackground;
 
         private readonly Dictionary<System.Type, BaseScreen> _screens = new();
         private BaseScreen _current;
+        private bool _transitioning;
 
         private void Awake()
         {
@@ -19,13 +23,15 @@ namespace FairyTales.UI.Core
                 _screens[screen.GetType()] = screen;
                 screen.HideImmediate();
             }
+
+            if (sharedBackground != null)
+                sharedBackground.gameObject.SetActive(true);
         }
 
         private void Start()
         {
             var start = initialScreen;
 
-            // Skip onboarding if user already saved
             if (onboardedScreen != null &&
                 !string.IsNullOrEmpty(PlayerPrefs.GetString("ft_childName", "")))
             {
@@ -38,6 +44,8 @@ namespace FairyTales.UI.Core
 
         public void Show<T>() where T : BaseScreen
         {
+            if (_transitioning) return;
+
             if (!_screens.TryGetValue(typeof(T), out var next))
             {
                 Debug.LogError($"[ScreenManager] Screen not found: {typeof(T).Name}");
@@ -49,10 +57,37 @@ namespace FairyTales.UI.Core
             var prev = _current;
             _current = next;
 
-            if (prev != null)
-                prev.Hide(() => next.Show());
-            else
-                next.Show();
+            // Both slide-enabled → coordinated swipe-up (move as one unit)
+            if (prev != null && prev.SlideEnabled && next.SlideEnabled)
+            {
+                CoordinatedSlide(prev, next);
+                return;
+            }
+
+            // Fallback: independent animations
+            if (prev != null) prev.Hide();
+            next.Show();
+        }
+
+        private void CoordinatedSlide(BaseScreen prev, BaseScreen next)
+        {
+            _transitioning = true;
+            var h = Screen.height;
+            var duration = next.AnimDuration;
+
+            // prev at 0, next directly below
+            prev.Rect.anchoredPosition = Vector2.zero;
+            next.PrepareBelow();
+
+            var seq = DOTween.Sequence();
+            seq.Append(prev.Rect.DOAnchorPosY(h, duration).SetEase(Ease.InOutCubic));
+            seq.Join(next.Rect.DOAnchorPosY(0f, duration).SetEase(Ease.InOutCubic));
+            seq.OnComplete(() =>
+            {
+                prev.FinalizeHidden();
+                next.FinalizeShown();
+                _transitioning = false;
+            });
         }
 
         public void ShowImmediate<T>() where T : BaseScreen

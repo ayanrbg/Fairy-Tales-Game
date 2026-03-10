@@ -9,7 +9,6 @@ namespace FairyTales.Editor
 {
     public static class LibrarySetup
     {
-        private static readonly Color BgColor = new(0.12f, 0.08f, 0.18f);
         private static readonly Color BtnColor = new(0.55f, 0.36f, 0.85f);
         private static readonly Color BtnSelectedColor = new(0.72f, 0.52f, 1f);
         private static readonly Color CardBgColor = new(0.2f, 0.14f, 0.3f);
@@ -35,7 +34,6 @@ namespace FairyTales.Editor
             if (screen.transform.childCount > 0) return;
 
             var root = screen.transform;
-            AddBackground(root);
 
             // Top bar
             var topBar = CreatePanel(root, "TopBar",
@@ -109,7 +107,6 @@ namespace FairyTales.Editor
             if (screen.transform.childCount > 0) return;
 
             var root = screen.transform;
-            AddBackground(root);
 
             // Back button
             var btnBack = CreateIconButton(root, "BtnBack", "\u2190",
@@ -228,15 +225,6 @@ namespace FairyTales.Editor
         }
 
         // ── UI Helpers ───────────────────────────────────────
-
-        private static void AddBackground(Transform parent)
-        {
-            var go = new GameObject("Background", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            go.AddComponent<Image>().color = BgColor;
-            Stretch(go);
-            go.transform.SetAsFirstSibling();
-        }
 
         private static GameObject CreatePanel(Transform parent, string name,
             Vector2 anchorMin, Vector2 anchorMax)
