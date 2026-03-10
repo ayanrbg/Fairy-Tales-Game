@@ -8,6 +8,7 @@ using FairyTales.Audio;
 using FairyTales.UI.Core;
 using FairyTales.UI.Library;
 using FairyTales.UI.Onboarding;
+using FairyTales.UI.Reading;
 
 namespace FairyTales.Editor
 {
@@ -91,10 +92,12 @@ namespace FairyTales.Editor
             CreateScreen<LibraryScreen>(canvas.transform);
             CreateScreen<TaleDetailScreen>(canvas.transform);
 
+            // Reading (Phase 6)
+            CreateScreen<ReadingScreen>(canvas.transform);
+
             // Screen stubs (not yet implemented)
             string[] stubs =
             {
-                "ReadingScreen",
                 "NarrationSetupScreen",
                 "VoiceRecordingScreen",
                 "NarrationProgressScreen"

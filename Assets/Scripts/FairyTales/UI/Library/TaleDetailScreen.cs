@@ -6,6 +6,7 @@ using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using FairyTales.UI.Reading;
 
 namespace FairyTales.UI.Library
 {
@@ -73,6 +74,16 @@ namespace FairyTales.UI.Library
                 onSuccess: d => { _detail = d; UpdateUI(); },
                 onError: e => Debug.LogError($"[TaleDetail] {e}"));
 
+            // Personalize pages (replace {childName} etc.)
+            if (_detail?.pages != null)
+            {
+                var childName = PlayerPrefs.GetString("ft_childName", "");
+                var gender = PlayerPrefs.GetString("ft_gender", "male");
+                yield return _tales.Personalize(_detail.id, childName, gender,
+                    onSuccess: pages => _detail.pages = pages,
+                    onError: _ => { });
+            }
+
             yield return _narration.GetNarrationStatus(_tale.id,
                 onSuccess: s => _hasAiNarration = s.status == "ready",
                 onError: _ => _hasAiNarration = false);
@@ -80,8 +91,13 @@ namespace FairyTales.UI.Library
 
         private void OnRead()
         {
-            // Will navigate to ReadingScreen (Phase 6)
-            Debug.Log($"[TaleDetail] Read: {_tale?.id}");
+            if (_detail == null) return;
+
+            var reading = _screens.Get<ReadingScreen>();
+            if (reading == null) return;
+
+            reading.SetTale(_detail);
+            _screens.Show<ReadingScreen>();
         }
 
         private void OnListen()
