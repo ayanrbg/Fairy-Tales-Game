@@ -9,6 +9,7 @@ namespace FairyTales.UI.Library
         public static Sprite Get(string taleId)
         {
             var sprite = Resources.Load<Sprite>($"{BasePath}/{taleId}");
+            Debug.Log(taleId);
             if (sprite == null)
                 Debug.LogWarning($"[CoverProvider] Missing: {BasePath}/{taleId}");
             return sprite;

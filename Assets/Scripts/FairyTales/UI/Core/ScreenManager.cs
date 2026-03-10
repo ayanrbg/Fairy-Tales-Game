@@ -6,6 +6,7 @@ namespace FairyTales.UI.Core
     public class ScreenManager : MonoBehaviour
     {
         [SerializeField] private BaseScreen initialScreen;
+        [SerializeField] private BaseScreen onboardedScreen;
 
         private readonly Dictionary<System.Type, BaseScreen> _screens = new();
         private BaseScreen _current;
@@ -22,10 +23,17 @@ namespace FairyTales.UI.Core
 
         private void Start()
         {
-            if (initialScreen != null)
-                initialScreen.ShowImmediate();
+            var start = initialScreen;
 
-            _current = initialScreen;
+            // Skip onboarding if user already saved
+            if (onboardedScreen != null &&
+                !string.IsNullOrEmpty(PlayerPrefs.GetString("ft_childName", "")))
+            {
+                start = onboardedScreen;
+            }
+
+            if (start != null) start.ShowImmediate();
+            _current = start;
         }
 
         public void Show<T>() where T : BaseScreen

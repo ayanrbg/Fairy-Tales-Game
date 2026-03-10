@@ -8,6 +8,7 @@ using FairyTales.Audio;
 using FairyTales.UI.Core;
 using FairyTales.UI.Library;
 using FairyTales.UI.Onboarding;
+using FairyTales.UI.Narration;
 using FairyTales.UI.Reading;
 
 namespace FairyTales.Editor
@@ -95,21 +96,17 @@ namespace FairyTales.Editor
             // Reading (Phase 6)
             CreateScreen<ReadingScreen>(canvas.transform);
 
-            // Screen stubs (not yet implemented)
-            string[] stubs =
-            {
-                "NarrationSetupScreen",
-                "VoiceRecordingScreen",
-                "NarrationProgressScreen"
-            };
-            foreach (var name in stubs)
-                CreateScreenStub(canvas.transform, name);
+            // Narration (Phase 7)
+            CreateScreen<NarrationSetupScreen>(canvas.transform);
+            CreateScreen<VoiceRecordingScreen>(canvas.transform);
+            CreateScreen<NarrationProgressScreen>(canvas.transform);
 
-            // Set initial screen = LanguageSelectScreen
+            // Set initial screen = LanguageSelectScreen, onboarded = LibraryScreen
             var so = new SerializedObject(sm);
-            var prop = so.FindProperty("initialScreen");
-            prop.objectReferenceValue =
+            so.FindProperty("initialScreen").objectReferenceValue =
                 canvas.transform.GetChild(0).GetComponent<BaseScreen>();
+            so.FindProperty("onboardedScreen").objectReferenceValue =
+                canvas.GetComponentInChildren<LibraryScreen>(true);
             so.ApplyModifiedProperties();
         }
 
@@ -128,21 +125,6 @@ namespace FairyTales.Editor
 
             go.AddComponent<CanvasGroup>();
             go.AddComponent<T>();
-            go.SetActive(false);
-        }
-
-        private static void CreateScreenStub(Transform parent, string name)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-
-            var rt = go.GetComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-
-            go.AddComponent<CanvasGroup>();
             go.SetActive(false);
         }
     }

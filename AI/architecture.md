@@ -57,15 +57,15 @@ Assets/
 
 ## Screens Flow
 ```
-LanguageSelect → Personalization → Loading → Library
-                                                ↓
-                                          TaleDetail
-                                         /    |     \
-                                   Reading  Listen  NarrationSetup
-                                     ↓                    ↓
-                              TableOfContents    VoiceRecording
-                                                       ↓
-                                              NarrationProgress
+LanguageSelect → Personalization → Library ←→ Personalization (Settings)
+                                      ↓
+                                 TaleDetail
+                                /    |     \
+                          Reading  Listen  NarrationSetup
+                            ↓                    ↓
+                     TableOfContents    VoiceRecording
+                                              ↓
+                                     NarrationProgress
 ```
 
 ## Development Phases
@@ -138,15 +138,20 @@ NarrationService:
 26. TableOfContentsPopup — horizontal scroll thumbnails
 27. Default narration integration
 
-### Phase 7 — Narration
+### Phase 7 — Narration ✅
 28. NarrationSetupScreen — new recording / drafts
 29. VoiceRecordingScreen — record 4 sentences + timer
 30. NarrationProgressScreen — waiting for AI generation
 31. Full integration: clone → narrate-all → poll → ready
 
-### Phase 8 — Polish
-32. DOTween animations everywhere
-33. Localization (RU/KZ/EN)
-34. State persistence (PlayerPrefs)
-35. Mobile adaptation (Safe Area, resolutions)
-36. Monetization placeholder
+### Phase 8 — Listen & Polish
+32. **"Слушать" button — real playback integration**
+    - AI narration: download pages via NarrationService.DownloadNarratedPage → NarrationPlayer
+    - Default narration: DefaultNarrationProvider → NarrationPlayer
+    - No narration: toast / suggest "Озвучить"
+    - ReadingScreen with auto-play per page (AI or Default)
+33. DOTween animations everywhere
+34. Localization (RU/KZ/EN)
+35. State persistence (PlayerPrefs)
+36. Mobile adaptation (Safe Area, resolutions)
+37. Monetization placeholder

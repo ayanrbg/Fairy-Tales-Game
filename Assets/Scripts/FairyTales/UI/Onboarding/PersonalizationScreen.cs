@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FairyTales.UI.Core;
+using FairyTales.UI.Library;
 
 namespace FairyTales.UI.Onboarding
 {
@@ -60,7 +61,7 @@ namespace FairyTales.UI.Onboarding
             PlayerPrefs.SetString("ft_gender", _gender);
             PlayerPrefs.Save();
 
-            _screens.Show<LoadingScreen>();
+            _screens.Show<LibraryScreen>();
         }
     }
 }

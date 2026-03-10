@@ -16,13 +16,13 @@
 - Top-left: globe (change language)
 - "Продолжить" button
 
-**Screen 3 — Loading**
-- Cat animation + progress bar
-- "Подготавливаем библиотеку" → "Персонализируем текст..."
-- Server personalizes tale texts with child's name
+**Screen 3 — Loading** *(removed from main flow)*
+- Was: cat animation + progress bar
+- Register + Personalize moved to LibraryScreen (lazy)
 
 ### 2. Library (main screen)
-- Top bar: settings, notifications, music toggle
+- Top bar: settings (→ Personalization), notifications, music toggle
+- Settings button opens PersonalizationScreen (change name/gender)
 - Banner: "Разблокировать все книги" (placeholder)
 - Grid of tale cards (cover + title)
 - Some books free ("Книга в подарок!"), others locked

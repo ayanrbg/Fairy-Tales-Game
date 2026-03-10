@@ -6,6 +6,7 @@ using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using FairyTales.UI.Narration;
 using FairyTales.UI.Reading;
 
 namespace FairyTales.UI.Library
@@ -113,8 +114,11 @@ namespace FairyTales.UI.Library
 
         private void OnNarrate()
         {
-            // Will navigate to NarrationSetupScreen (Phase 7)
-            Debug.Log($"[TaleDetail] Narrate: {_tale?.id}");
+            var setup = _screens.Get<NarrationSetupScreen>();
+            if (setup == null) return;
+
+            setup.SetTale(_tale);
+            _screens.Show<NarrationSetupScreen>();
         }
 
         private void OnBack()

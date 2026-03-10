@@ -249,4 +249,78 @@ Assets/Resources/Illustrations/{taleId}/page_0.png
 Assets/Resources/Illustrations/{taleId}/page_1.png
 ```
 
+### Flow Change — убран LoadingScreen из основного flow
+
+**Новый flow:**
+```
+LanguageSelect → Personalization → Library
+                                    ↓ (Settings)
+                              Personalization
+```
+
+**Изменения:**
+
+- `PersonalizationScreen.cs` — OnContinue() теперь → LibraryScreen (вместо LoadingScreen)
+- `LibraryScreen.cs` — полный рефактор:
+  - Lazy Register: при первом OnShown вызывает AuthService.Register()
+  - btnSettings → PersonalizationScreen
+  - Всегда перезагружает сказки при OnShown (имя/пол могли измениться)
+  - GetOrCreateUserId() перенесён из LoadingScreen
+- LoadingScreen остаётся в кодовой базе, но не используется в основном flow
+
 **Next step:** Phase 7 — Narration
+
+---
+
+## Session 6 — 2026-03-10
+
+### Auto-skip Onboarding
+
+**ScreenManager.cs** — добавлено поле `onboardedScreen`:
+- В Start() проверяет `PlayerPrefs.GetString("ft_childName")`
+- Если имя есть → показывает `onboardedScreen` (LibraryScreen) вместо `initialScreen`
+- SceneSetup назначает LibraryScreen в `onboardedScreen`
+
+### Phase 7 — Narration ✅
+
+**Files created** (3 files in `Scripts/FairyTales/UI/Narration/`):
+
+- `NarrationSetupScreen.cs` — экран настройки озвучки
+  - Обложка + название сказки
+  - 2 вкладки: "Новая запись" / "Черновики"
+  - Новая запись: имя рассказчика + кнопка "Начать" → CreateDraft → VoiceRecordingScreen
+  - Черновики: список drafts → клик → VoiceRecordingScreen
+
+- `VoiceRecordingScreen.cs` — запись голоса
+  - 4 sample sentences для чтения вслух (хардкод)
+  - Record/Stop (через MicRecorder), таймер в Update
+  - Play (через NarrationPlayer)
+  - Send → CloneVoice → NarrateAll → NarrationProgressScreen
+
+- `NarrationProgressScreen.cs` — прогресс AI озвучки
+  - Polling narration-status каждые 3 сек
+  - Slider progressBar + pagesReady/totalPages
+  - Когда done → кнопка "Готово" → TaleDetailScreen
+
+**Editor:**
+- `Editor/NarrationSetup.cs` — menu: FairyTales → Setup Narration UI
+  - SetupNarrationSetupScreen, SetupVoiceRecordingScreen, SetupNarrationProgressScreen
+  - Prefab: `Assets/Prefabs/UI/DraftItem.prefab`
+
+**Updated:**
+- `TaleDetailScreen.cs` — OnNarrate() → NarrationSetupScreen.SetTale + Show
+- `SceneSetup.cs` — stubs заменены на CreateScreen<T> для narration экранов, onboardedScreen assigned
+- `ScreenManager.cs` — onboardedScreen для автоскипа онбординга
+
+**Full narration flow:**
+```
+TaleDetailScreen → "Озвучить" → NarrationSetupScreen
+  → "Начать" → CreateDraft → VoiceRecordingScreen
+    → Record → CloneVoice → NarrateAll → NarrationProgressScreen
+      → Poll → Done → TaleDetailScreen (re-checks narration status)
+```
+
+**Known limitation:**
+- Кнопка "Слушать" в TaleDetailScreen — пока Debug.Log заглушка. Реальное воспроизведение (AI/Default/нет озвучки) → Phase 8.
+
+**Next step:** Phase 8 — Listen & Polish
