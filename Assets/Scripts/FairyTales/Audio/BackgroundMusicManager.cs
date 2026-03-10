@@ -1,3 +1,4 @@
+using FairyTales.UI.Core;
 using UnityEngine;
 
 namespace FairyTales.Audio
@@ -25,7 +26,9 @@ namespace FairyTales.Audio
             _source = gameObject.AddComponent<AudioSource>();
             _source.loop = true;
             _source.playOnAwake = false;
+            volume = ReadingState.LoadVolume();
             _source.volume = volume;
+            _source.mute = ReadingState.LoadMuted();
         }
 
         public void PlayMenu()
@@ -53,9 +56,14 @@ namespace FairyTales.Audio
         {
             volume = Mathf.Clamp01(v);
             _source.volume = volume;
+            ReadingState.SaveVolume(volume);
         }
 
-        public void SetMuted(bool muted) => _source.mute = muted;
+        public void SetMuted(bool muted)
+        {
+            _source.mute = muted;
+            ReadingState.SaveMuted(muted);
+        }
         public bool IsMuted => _source.mute;
     }
 }

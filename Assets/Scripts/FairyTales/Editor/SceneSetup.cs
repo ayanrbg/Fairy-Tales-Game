@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -101,6 +102,19 @@ namespace FairyTales.Editor
             CreateScreen<VoiceRecordingScreen>(canvas.transform);
             CreateScreen<NarrationProgressScreen>(canvas.transform);
 
+            // SafeAreaFitter — wraps all screens
+            var safeArea = new GameObject("SafeArea", typeof(RectTransform));
+            safeArea.transform.SetParent(canvas.transform, false);
+            var safeRt = safeArea.GetComponent<RectTransform>();
+            safeRt.anchorMin = Vector2.zero;
+            safeRt.anchorMax = Vector2.one;
+            safeRt.offsetMin = Vector2.zero;
+            safeRt.offsetMax = Vector2.zero;
+            safeArea.AddComponent<SafeAreaFitter>();
+
+            // Toast
+            CreateToast(canvas.transform);
+
             // Set initial screen = LanguageSelectScreen, onboarded = LibraryScreen
             var so = new SerializedObject(sm);
             so.FindProperty("initialScreen").objectReferenceValue =
@@ -108,6 +122,46 @@ namespace FairyTales.Editor
             so.FindProperty("onboardedScreen").objectReferenceValue =
                 canvas.GetComponentInChildren<LibraryScreen>(true);
             so.ApplyModifiedProperties();
+        }
+
+        private static void CreateToast(Transform parent)
+        {
+            var go = new GameObject("Toast", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.1f, 0.05f);
+            rt.anchorMax = new Vector2(0.9f, 0.12f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            var bg = go.AddComponent<Image>();
+            bg.color = new Color(0.15f, 0.15f, 0.2f, 0.9f);
+
+            var cg = go.AddComponent<CanvasGroup>();
+
+            // Label
+            var labelGo = new GameObject("Label", typeof(RectTransform));
+            labelGo.transform.SetParent(go.transform, false);
+            var labelRt = labelGo.GetComponent<RectTransform>();
+            labelRt.anchorMin = Vector2.zero;
+            labelRt.anchorMax = Vector2.one;
+            labelRt.offsetMin = new Vector2(16, 4);
+            labelRt.offsetMax = new Vector2(-16, -4);
+
+            var label = labelGo.AddComponent<TextMeshProUGUI>();
+            label.alignment = TextAlignmentOptions.Center;
+            label.fontSize = 28;
+            label.color = Color.white;
+
+            // Wire Toast references
+            var toast = go.AddComponent<Toast>();
+            var so = new SerializedObject(toast);
+            so.FindProperty("label").objectReferenceValue = label;
+            so.FindProperty("canvasGroup").objectReferenceValue = cg;
+            so.ApplyModifiedProperties();
+
+            go.SetActive(false);
         }
 
         private static void CreateScreen<T>(Transform parent)

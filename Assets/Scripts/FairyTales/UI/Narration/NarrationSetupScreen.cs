@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FairyTales.Api;
+using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
 using FairyTales.UI.Library;
@@ -24,27 +25,43 @@ namespace FairyTales.UI.Narration
         [SerializeField] private GameObject panelNew;
         [SerializeField] private GameObject panelDrafts;
 
+        [Header("Quick Narrate (voice already cloned)")]
+        [SerializeField] private GameObject panelQuickNarrate;
+        [SerializeField] private Button btnNarrateNow;
+        [SerializeField] private Button btnRerecord;
+
         [Header("Drafts")]
         [SerializeField] private Transform draftsContainer;
         [SerializeField] private GameObject draftItemPrefab;
 
         private ScreenManager _screens;
         private VoiceService _voice;
+        private NarrationService _narration;
         private TaleSummary _tale;
+
+        private bool HasVoice => PlayerPrefs.GetInt("ft_voiceCloned", 0) == 1;
 
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
             var api = FindAnyObjectByType<ApiClient>();
             _voice = new VoiceService(api);
+            _narration = new NarrationService(api);
 
             if (btnStart) btnStart.onClick.AddListener(OnStart);
             if (btnBack) btnBack.onClick.AddListener(OnBack);
             if (btnTabNew) btnTabNew.onClick.AddListener(() => ShowTab(true));
             if (btnTabDrafts) btnTabDrafts.onClick.AddListener(() => ShowTab(false));
+            if (btnNarrateNow) btnNarrateNow.onClick.AddListener(OnNarrateNow);
+            if (btnRerecord) btnRerecord.onClick.AddListener(OnRerecord);
         }
 
-        public void SetTale(TaleSummary tale) => _tale = tale;
+        public void SetTale(TaleSummary tale)
+        {
+            _tale = tale;
+            if (titleText) titleText.text = "";
+            if (coverImage) coverImage.sprite = null;
+        }
 
         protected override void OnShown()
         {
@@ -53,14 +70,61 @@ namespace FairyTales.UI.Narration
             var cover = _tale != null ? CoverProvider.Get(_tale.id) : null;
             if (coverImage && cover) coverImage.sprite = cover;
 
-            ShowTab(true);
+            // Show quick narrate panel if voice exists, otherwise new recording
+            if (HasVoice)
+            {
+                if (panelQuickNarrate) panelQuickNarrate.SetActive(true);
+                if (panelNew) panelNew.SetActive(false);
+                if (panelDrafts) panelDrafts.SetActive(false);
+            }
+            else
+            {
+                if (panelQuickNarrate) panelQuickNarrate.SetActive(false);
+                ShowTab(true);
+            }
+
             StartCoroutine(LoadDrafts());
         }
 
         private void ShowTab(bool isNew)
         {
+            if (panelQuickNarrate) panelQuickNarrate.SetActive(false);
             if (panelNew) panelNew.SetActive(isNew);
             if (panelDrafts) panelDrafts.SetActive(!isNew);
+        }
+
+        private void OnNarrateNow()
+        {
+            StartCoroutine(NarrateWithExistingVoice());
+        }
+
+        private IEnumerator NarrateWithExistingVoice()
+        {
+            if (btnNarrateNow) btnNarrateNow.interactable = false;
+
+            var childName = PlayerPrefs.GetString("ft_childName", "");
+            var gender = PlayerPrefs.GetString("ft_gender", "male");
+
+            yield return _narration.NarrateAll(_tale.id, childName, gender,
+                onSuccess: _ =>
+                {
+                    var progress = _screens.Get<NarrationProgressScreen>();
+                    if (progress == null) return;
+                    progress.SetContext(_tale);
+                    _screens.Show<NarrationProgressScreen>();
+                },
+                onError: e =>
+                {
+                    Debug.LogError($"[NarrationSetup] NarrateAll: {e}");
+                    Toast.Show($"Ошибка: {e}");
+                    if (btnNarrateNow) btnNarrateNow.interactable = true;
+                });
+        }
+
+        private void OnRerecord()
+        {
+            if (panelQuickNarrate) panelQuickNarrate.SetActive(false);
+            ShowTab(true);
         }
 
         private IEnumerator LoadDrafts()

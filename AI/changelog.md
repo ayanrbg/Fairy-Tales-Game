@@ -321,6 +321,156 @@ TaleDetailScreen → "Озвучить" → NarrationSetupScreen
 ```
 
 **Known limitation:**
-- Кнопка "Слушать" в TaleDetailScreen — пока Debug.Log заглушка. Реальное воспроизведение (AI/Default/нет озвучки) → Phase 8.
+- ~~Кнопка "Слушать" в TaleDetailScreen — пока Debug.Log заглушка.~~ Реализовано в Phase 8.
 
-**Next step:** Phase 8 — Listen & Polish
+---
+
+## Session 7 — 2026-03-10
+
+### Phase 8 — Listen & Polish ✅
+
+#### 32. "Слушать" — Real Playback
+
+**ReadingScreen.cs** — добавлен `NarrationMode` enum (None/Default/AI):
+- `SetTale(tale, mode)` — принимает режим озвучки
+- AI mode: скачивает аудио через `NarrationService.DownloadNarratedPage` → `NarrationPlayer.PlayFromBytes`
+- Default mode: `DefaultNarrationProvider.GetPage` → `NarrationPlayer.PlayClip`
+- AI fallback: при ошибке загрузки AI → автоматически пробует Default
+- Авто-воспроизведение при смене страницы
+
+**TaleDetailScreen.cs** — "Слушать" теперь реально работает:
+- AI narration ready → ReadingScreen с NarrationMode.AI
+- Default narration available → ReadingScreen с NarrationMode.Default
+- Нет озвучки → Toast "Нет озвучки. Нажмите «Озвучить»"
+
+#### 33. DOTween Animations
+
+**ButtonScaleEffect.cs** — `Scripts/FairyTales/UI/Core/`
+- IPointerDown/Up — scale down (0.9) / scale back (OutBack)
+- Добавляется на любую кнопку как компонент
+
+**LibraryScreen.cs** — staggered scale-in анимация карточек:
+- Каждая карточка появляется с задержкой (i * 0.05s)
+- Ease.OutBack для "пружинящего" эффекта
+
+#### 34. Localization (RU/KZ/EN)
+
+**Loc.cs** — `Scripts/FairyTales/UI/Core/`
+- Статический класс, Dictionary<key, Dictionary<lang, text>>
+- `Loc.Lang` — читает/пишет `ft_lang` из PlayerPrefs
+- `Loc.Get(key)` — возвращает строку на текущем языке, fallback на "ru"
+- 20 ключей: UI кнопки, toast-сообщения, labels
+
+#### 35. State Persistence
+
+**ReadingState.cs** — `Scripts/FairyTales/UI/Core/`
+- `SavePage/LoadPage` — последняя страница per tale (`ft_page_{taleId}`)
+- `SaveVolume/LoadVolume` — громкость музыки (`ft_volume`)
+- `SaveMuted/LoadMuted` — mute состояние (`ft_muted`)
+
+**Интеграции:**
+- ReadingScreen — resume from last page, save on page change и OnHidden
+- BackgroundMusicManager — restore volume/mute на старте, save при изменении
+
+#### 36. Safe Area
+
+**SafeAreaFitter.cs** — `Scripts/FairyTales/UI/Core/`
+- RectTransform anchors подгоняются под Screen.safeArea
+- Update() отслеживает изменения (поворот экрана)
+
+#### 37. Monetization Placeholder
+
+**UnlockPopup.cs** — `Scripts/FairyTales/UI/Core/`
+- Fade in/out popup
+- Кнопки Close и Unlock
+- Unlock → Toast "Скоро будет доступно!"
+
+**LibraryScreen.cs** — btnUnlockAll → UnlockPopup.Show() или Toast fallback
+
+#### Toast System
+
+**Toast.cs** — `Scripts/FairyTales/UI/Core/`
+- Singleton, static Show(message)
+- DOTween: fade in → display → fade out
+- Editor setup: автоматически создаётся в SceneSetup
+
+#### Editor
+
+**SceneSetup.cs** — обновлён:
+- Создаёт SafeArea (RectTransform + SafeAreaFitter)
+- Создаёт Toast (Image bg + TMP_Text label + CanvasGroup + Toast component)
+
+#### New Files
+```
+Scripts/FairyTales/UI/Core/Toast.cs
+Scripts/FairyTales/UI/Core/Loc.cs
+Scripts/FairyTales/UI/Core/ReadingState.cs
+Scripts/FairyTales/UI/Core/SafeAreaFitter.cs
+Scripts/FairyTales/UI/Core/UnlockPopup.cs
+Scripts/FairyTales/UI/Core/ButtonScaleEffect.cs
+```
+
+#### Modified Files
+```
+Scripts/FairyTales/UI/Reading/ReadingScreen.cs — NarrationMode, AI playback, state persistence
+Scripts/FairyTales/UI/Library/TaleDetailScreen.cs — real OnListen(), Toast, Loc
+Scripts/FairyTales/UI/Library/LibraryScreen.cs — card animations, UnlockAll
+Scripts/FairyTales/Audio/BackgroundMusicManager.cs — persist volume/mute
+Scripts/FairyTales/Editor/SceneSetup.cs — Toast + SafeArea creation
+```
+
+---
+
+## Session 8 — 2026-03-10
+
+### Bugfixes & Improvements
+
+#### Bugfix: narration status check
+- **TaleDetailScreen.cs** — `_hasAiNarration` проверял `status == "ready"`, но сервер возвращает `"done"`. Исправлено: `status == "done" || status == "ready"`.
+
+#### Bugfix: FMOD audio format detection
+- **NarrationPlayer.cs** — сервер отдаёт MP3, но файл сохранялся как `.wav` → Unity не мог определить формат через `AudioType.UNKNOWN`.
+- Добавлен `DetectFormat(byte[])` — определяет формат по magic bytes (OGG: `OggS`, WAV: `RIFF`, MP3: `ID3`/`0xFF 0xE0+`).
+- Файл теперь сохраняется с правильным расширением (`.mp3`, `.ogg`, `.wav`) и передаётся правильный `AudioType`.
+
+#### Bugfix: AI narration reads raw placeholders
+- **NarrationService.cs** — `NarrateAll()` теперь принимает `childName` и `gender`, отправляет JSON body `{ "name": "...", "gender": "..." }` через `PostJson` вместо пустого `Post`.
+- **VoiceRecordingScreen.cs** — передаёт `ft_childName` и `ft_gender` из PlayerPrefs в `NarrateAll()`.
+- **API.md** — обновлена документация endpoint `POST /api/tales/{id}/narrate-all`: описан JSON body с `name`/`gender`, логика персонализации на сервере, новая ошибка 400.
+
+#### Feature: persistent voice across tales
+Голос клонируется один раз и используется для всех сказок без повторной записи.
+
+- **VoiceRecordingScreen.cs** — после успешного `CloneVoice` сохраняет `ft_voiceCloned = 1` в PlayerPrefs.
+- **NarrationSetupScreen.cs** — полный рефактор:
+  - При открытии проверяет `ft_voiceCloned`
+  - Если голос есть → показывает `panelQuickNarrate`:
+    - **"Озвучить этим голосом"** → сразу `NarrateAll` → `NarrationProgressScreen`
+    - **"Перезаписать голос"** → переключает на tab "Новая запись"
+  - Если голоса нет → обычный flow (запись → clone → narrate)
+  - Добавлены поля: `panelQuickNarrate`, `btnNarrateNow`, `btnRerecord`, `NarrationService`
+- **NarrationSetup.cs** (Editor) — создаёт UI для `panelQuickNarrate` (label + 2 кнопки)
+
+**Flow:**
+```
+Первая сказка:  Озвучить → Новая запись → Clone → NarrateAll → Done
+Вторая сказка:  Озвучить → "Озвучить этим голосом" → NarrateAll → Done
+```
+
+#### UX: clear stale UI on screen transition
+- **TaleDetailScreen.cs** — `SetTale()` очищает title, pageCount, cover (`ClearUI()`) до начала fade-in, чтобы не мелькали данные предыдущей сказки.
+- **NarrationSetupScreen.cs** — `SetTale()` очищает title и cover аналогично.
+
+#### PlayerPrefs keys (new)
+- `ft_voiceCloned` — флаг: голос уже клонирован (1)
+
+#### Modified Files
+```
+Scripts/FairyTales/Audio/NarrationPlayer.cs — DetectFormat(), правильный AudioType
+Scripts/FairyTales/Api/NarrationService.cs — NarrateAll(taleId, childName, gender)
+Scripts/FairyTales/UI/Narration/VoiceRecordingScreen.cs — save ft_voiceCloned, pass name/gender
+Scripts/FairyTales/UI/Narration/NarrationSetupScreen.cs — quick narrate panel, ClearUI
+Scripts/FairyTales/UI/Library/TaleDetailScreen.cs — status fix, ClearUI
+Scripts/FairyTales/Editor/NarrationSetup.cs — panelQuickNarrate UI
+AI/API.md — narrate-all documentation updated
+```

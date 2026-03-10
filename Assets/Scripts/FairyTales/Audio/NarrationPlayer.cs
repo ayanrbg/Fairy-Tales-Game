@@ -10,7 +10,6 @@ namespace FairyTales.Audio
     {
         private AudioSource _source;
         private Coroutine _playRoutine;
-        private string _tempPath;
 
         public bool IsPlaying => _source != null && _source.isPlaying;
         public float Progress => _source != null && _source.clip != null
@@ -22,7 +21,6 @@ namespace FairyTales.Audio
         {
             _source = gameObject.AddComponent<AudioSource>();
             _source.playOnAwake = false;
-            _tempPath = Path.Combine(Application.temporaryCachePath, "narration.wav");
         }
 
         public void PlayFromBytes(byte[] audioData)
@@ -55,10 +53,12 @@ namespace FairyTales.Audio
 
         private IEnumerator LoadAndPlay(byte[] data)
         {
-            File.WriteAllBytes(_tempPath, data);
+            var (ext, audioType) = DetectFormat(data);
+            var path = Path.Combine(Application.temporaryCachePath, $"narration.{ext}");
+            File.WriteAllBytes(path, data);
 
-            var uri = "file:///" + _tempPath.Replace("\\", "/");
-            using var request = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.UNKNOWN);
+            var uri = "file:///" + path.Replace("\\", "/");
+            using var request = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
@@ -71,6 +71,26 @@ namespace FairyTales.Audio
             _source.clip = clip;
             _source.Play();
             yield return WaitForEnd();
+        }
+
+        private static (string ext, AudioType type) DetectFormat(byte[] data)
+        {
+            if (data.Length < 4) return ("wav", AudioType.WAV);
+
+            // OGG: "OggS"
+            if (data[0] == 'O' && data[1] == 'g' && data[2] == 'g' && data[3] == 'S')
+                return ("ogg", AudioType.OGGVORBIS);
+
+            // WAV: "RIFF"
+            if (data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F')
+                return ("wav", AudioType.WAV);
+
+            // MP3: ID3 tag or sync word (0xFF 0xFB/0xF3/0xF2)
+            if ((data[0] == 'I' && data[1] == 'D' && data[2] == '3') ||
+                (data[0] == 0xFF && (data[1] & 0xE0) == 0xE0))
+                return ("mp3", AudioType.MPEG);
+
+            return ("wav", AudioType.WAV);
         }
 
         private IEnumerator WaitForEnd()

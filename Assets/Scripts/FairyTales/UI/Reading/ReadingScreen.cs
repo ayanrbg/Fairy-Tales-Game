@@ -1,11 +1,15 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
 
 namespace FairyTales.UI.Reading
 {
+    public enum NarrationMode { None, Default, AI }
+
     public class ReadingScreen : BaseScreen
     {
         [SerializeField] private PageNavigator pageNavigator;
@@ -17,15 +21,18 @@ namespace FairyTales.UI.Reading
 
         private ScreenManager _screens;
         private NarrationPlayer _narrationPlayer;
+        private NarrationService _narrationService;
         private DefaultNarrationProvider _defaultNarration;
         private TaleDetail _tale;
-        private bool _autoNarrate = true;
+        private NarrationMode _mode = NarrationMode.Default;
 
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
             _narrationPlayer = FindAnyObjectByType<NarrationPlayer>();
             _defaultNarration = new DefaultNarrationProvider();
+            var api = FindAnyObjectByType<ApiClient>();
+            if (api) _narrationService = new NarrationService(api);
 
             if (btnHome) btnHome.onClick.AddListener(OnHome);
             if (btnToc) btnToc.onClick.AddListener(OnToc);
@@ -34,18 +41,20 @@ namespace FairyTales.UI.Reading
             if (btnNext) btnNext.onClick.AddListener(OnNext);
         }
 
-        public void SetTale(TaleDetail tale)
+        public void SetTale(TaleDetail tale, NarrationMode mode = NarrationMode.Default)
         {
             _tale = tale;
+            _mode = mode;
         }
 
         protected override void OnShown()
         {
             if (_tale == null || _tale.pages == null) return;
 
-            pageNavigator.Init(_tale.id, _tale.pages);
+            var startPage = ReadingState.LoadPage(_tale.id);
+            pageNavigator.Init(_tale.id, _tale.pages, startPage);
             pageNavigator.OnPageChanged += OnPageChanged;
-            PlayNarration(0);
+            PlayNarration(startPage);
             UpdateNavButtons();
         }
 
@@ -54,21 +63,45 @@ namespace FairyTales.UI.Reading
             if (pageNavigator != null)
                 pageNavigator.OnPageChanged -= OnPageChanged;
             if (_narrationPlayer) _narrationPlayer.Stop();
+            if (_tale != null)
+                ReadingState.SavePage(_tale.id, pageNavigator.CurrentPage);
         }
 
         private void OnPageChanged(int page)
         {
             UpdateNavButtons();
-            if (_autoNarrate) PlayNarration(page);
+            PlayNarration(page);
+            if (_tale != null) ReadingState.SavePage(_tale.id, page);
         }
 
         private void PlayNarration(int page)
         {
             if (_narrationPlayer == null || _tale == null) return;
+            _narrationPlayer.Stop();
 
+            if (_mode == NarrationMode.AI)
+                StartCoroutine(PlayAiNarration(page));
+            else if (_mode == NarrationMode.Default)
+                PlayDefaultNarration(page);
+        }
+
+        private void PlayDefaultNarration(int page)
+        {
             var clip = _defaultNarration.GetPage(_tale.id, page);
-            if (clip != null)
-                _narrationPlayer.PlayClip(clip);
+            if (clip != null) _narrationPlayer.PlayClip(clip);
+        }
+
+        private IEnumerator PlayAiNarration(int page)
+        {
+            if (_narrationService == null) yield break;
+
+            yield return _narrationService.DownloadNarratedPage(_tale.id, page,
+                onSuccess: bytes => _narrationPlayer.PlayFromBytes(bytes),
+                onError: e =>
+                {
+                    Debug.LogWarning($"[Reading] AI narration failed p{page}: {e}");
+                    PlayDefaultNarration(page);
+                });
         }
 
         private void UpdateNavButtons()

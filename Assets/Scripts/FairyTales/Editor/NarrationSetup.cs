@@ -99,6 +99,26 @@ namespace FairyTales.Editor
             scrollRect.horizontal = false;
             panelDrafts.SetActive(false);
 
+            // Panel Quick Narrate (voice already cloned)
+            var panelQuick = CreatePanel(root, "PanelQuickNarrate",
+                new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.43f));
+
+            CreateTMP(panelQuick.transform, "QuickLabel",
+                "Голос уже записан. Озвучить эту сказку?",
+                24, TextAlignmentOptions.Center,
+                new Vector2(0.05f, 0.6f), new Vector2(0.95f, 0.85f));
+
+            var btnNarrateNow = CreateButton(panelQuick.transform, "BtnNarrateNow",
+                "Озвучить этим голосом",
+                new Vector2(0.1f, 0.3f), new Vector2(0.9f, 0.55f));
+
+            var btnRerecord = CreateButton(panelQuick.transform, "BtnRerecord",
+                "Перезаписать голос",
+                new Vector2(0.2f, 0.05f), new Vector2(0.8f, 0.25f));
+            btnRerecord.GetComponent<Image>().color = PanelColor;
+
+            panelQuick.SetActive(false);
+
             // Assign fields
             var so = new SerializedObject(screen);
             so.FindProperty("coverImage").objectReferenceValue = coverImg;
@@ -116,6 +136,11 @@ namespace FairyTales.Editor
                 btnTabDrafts.GetComponent<Button>();
             so.FindProperty("panelNew").objectReferenceValue = panelNew;
             so.FindProperty("panelDrafts").objectReferenceValue = panelDrafts;
+            so.FindProperty("panelQuickNarrate").objectReferenceValue = panelQuick;
+            so.FindProperty("btnNarrateNow").objectReferenceValue =
+                btnNarrateNow.GetComponent<Button>();
+            so.FindProperty("btnRerecord").objectReferenceValue =
+                btnRerecord.GetComponent<Button>();
             so.FindProperty("draftsContainer").objectReferenceValue =
                 content.transform;
             so.ApplyModifiedProperties();

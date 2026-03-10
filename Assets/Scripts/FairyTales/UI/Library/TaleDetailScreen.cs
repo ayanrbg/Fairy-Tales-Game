@@ -48,6 +48,14 @@ namespace FairyTales.UI.Library
             _tale = tale;
             _detail = null;
             _hasAiNarration = false;
+            ClearUI();
+        }
+
+        private void ClearUI()
+        {
+            if (titleText) titleText.text = "";
+            if (pageCountText) pageCountText.text = "";
+            if (coverImage) coverImage.sprite = null;
         }
 
         protected override void OnShown()
@@ -64,7 +72,7 @@ namespace FairyTales.UI.Library
             if (coverImage && cover != null) coverImage.sprite = cover;
 
             if (pageCountText && _detail != null)
-                pageCountText.text = $"{_detail.totalPages} стр.";
+                pageCountText.text = $"{_detail.totalPages} {Loc.Get("pages")}";
         }
 
         private IEnumerator LoadDetail()
@@ -86,7 +94,7 @@ namespace FairyTales.UI.Library
             }
 
             yield return _narration.GetNarrationStatus(_tale.id,
-                onSuccess: s => _hasAiNarration = s.status == "ready",
+                onSuccess: s => _hasAiNarration = s.status == "done" || s.status == "ready",
                 onError: _ => _hasAiNarration = false);
         }
 
@@ -103,13 +111,30 @@ namespace FairyTales.UI.Library
 
         private void OnListen()
         {
-            // AI narration available → server audio, otherwise → default client audio
+            if (_detail == null) return;
+
+            var reading = _screens.Get<ReadingScreen>();
+            if (reading == null) return;
+
             if (_hasAiNarration)
-                Debug.Log($"[TaleDetail] Listen AI: {_tale?.id}");
+            {
+                reading.SetTale(_detail, NarrationMode.AI);
+                _screens.Show<ReadingScreen>();
+            }
             else if (_defaultNarration.HasAnyNarration(_tale?.id ?? ""))
-                Debug.Log($"[TaleDetail] Listen Default: {_tale?.id}");
+            {
+                reading.SetTale(_detail, NarrationMode.Default);
+                _screens.Show<ReadingScreen>();
+            }
             else
-                Debug.Log($"[TaleDetail] No narration: {_tale?.id}");
+            {
+                ShowNoNarrationToast();
+            }
+        }
+
+        private void ShowNoNarrationToast()
+        {
+            Toast.Show(Loc.Get("no_narration"));
         }
 
         private void OnNarrate()

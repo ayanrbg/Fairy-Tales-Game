@@ -22,10 +22,15 @@ namespace FairyTales.Api
         }
 
         // ── Full book narration (async) ──────────────────
-        public IEnumerator NarrateAll(string taleId,
+        public IEnumerator NarrateAll(string taleId, string childName, string gender,
             Action<NarrateAllResponse> onSuccess, Action<string> onError = null)
         {
-            yield return _api.Post($"/api/tales/{taleId}/narrate-all",
+            var body = JsonUtility.ToJson(new PersonalizeRequest
+            {
+                name = childName,
+                gender = gender
+            });
+            yield return _api.PostJson($"/api/tales/{taleId}/narrate-all", body,
                 json =>
                 {
                     var response = JsonUtility.FromJson<NarrateAllResponse>(json);

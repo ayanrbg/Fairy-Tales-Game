@@ -146,9 +146,14 @@ namespace FairyTales.UI.Narration
                 yield break;
             }
 
+            PlayerPrefs.SetInt("ft_voiceCloned", 1);
+            PlayerPrefs.Save();
+
             if (statusText) statusText.text = "Запуск озвучки...";
 
-            yield return _narration.NarrateAll(_tale.id,
+            var childName = PlayerPrefs.GetString("ft_childName", "");
+            var gender = PlayerPrefs.GetString("ft_gender", "male");
+            yield return _narration.NarrateAll(_tale.id, childName, gender,
                 onSuccess: r =>
                 {
                     var progress = _screens.Get<NarrationProgressScreen>();

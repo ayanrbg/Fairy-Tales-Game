@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using FairyTales.Api;
@@ -33,6 +34,7 @@ namespace FairyTales.UI.Library
 
             if (btnSettings) btnSettings.onClick.AddListener(OnSettings);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
+            if (btnUnlockAll) btnUnlockAll.onClick.AddListener(OnUnlockAll);
         }
 
         protected override void OnShown()
@@ -84,12 +86,20 @@ namespace FairyTales.UI.Library
 
             if (_loadedTales == null) return;
 
-            foreach (var tale in _loadedTales)
+            for (int i = 0; i < _loadedTales.Length; i++)
             {
+                var tale = _loadedTales[i];
                 var go = Instantiate(cardPrefab, cardContainer);
                 go.SetActive(true);
                 var card = go.GetComponent<TaleCard>();
                 card.Init(tale, false, OnCardClick);
+
+                // Staggered scale-in animation
+                var t = go.transform;
+                t.localScale = Vector3.zero;
+                t.DOScale(Vector3.one, 0.3f)
+                    .SetDelay(i * 0.05f)
+                    .SetEase(Ease.OutBack);
             }
         }
 
@@ -105,6 +115,13 @@ namespace FairyTales.UI.Library
         private void OnSettings()
         {
             _screens.Show<PersonalizationScreen>();
+        }
+
+        private void OnUnlockAll()
+        {
+            var popup = GetComponentInChildren<UnlockPopup>(true);
+            if (popup) popup.Show();
+            else Toast.Show(Loc.Get("unlock_coming_soon"));
         }
 
         private void OnMusicToggle()

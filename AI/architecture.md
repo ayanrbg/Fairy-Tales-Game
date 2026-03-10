@@ -144,7 +144,7 @@ NarrationService:
 30. NarrationProgressScreen — waiting for AI generation
 31. Full integration: clone → narrate-all → poll → ready
 
-### Phase 8 — Listen & Polish
+### Phase 8 — Listen & Polish ✅
 32. **"Слушать" button — real playback integration**
     - AI narration: download pages via NarrationService.DownloadNarratedPage → NarrationPlayer
     - Default narration: DefaultNarrationProvider → NarrationPlayer
