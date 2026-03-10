@@ -6,6 +6,7 @@ using TMPro;
 using FairyTales.Api;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using FairyTales.UI.Library;
 
 namespace FairyTales.UI.Onboarding
 {
@@ -93,9 +94,7 @@ namespace FairyTales.UI.Onboarding
             PlayerPrefs.SetInt("ft_onboarded", 1);
             PlayerPrefs.Save();
 
-            // Navigate to Library (will work once LibraryScreen exists)
-            // _screens.Show<LibraryScreen>();
-            Debug.Log("[Loading] Onboarding complete");
+            _screens.Show<LibraryScreen>();
         }
 
         private void SetProgress(float value, string text)

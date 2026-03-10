@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.UI.Core;
+using FairyTales.UI.Library;
 using FairyTales.UI.Onboarding;
 
 namespace FairyTales.Editor
@@ -86,11 +87,13 @@ namespace FairyTales.Editor
             CreateScreen<PersonalizationScreen>(canvas.transform);
             CreateScreen<LoadingScreen>(canvas.transform);
 
+            // Library screens (Phase 5)
+            CreateScreen<LibraryScreen>(canvas.transform);
+            CreateScreen<TaleDetailScreen>(canvas.transform);
+
             // Screen stubs (not yet implemented)
             string[] stubs =
             {
-                "LibraryScreen",
-                "TaleDetailScreen",
                 "ReadingScreen",
                 "NarrationSetupScreen",
                 "VoiceRecordingScreen",
