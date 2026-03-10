@@ -171,3 +171,82 @@ Assets/Resources/Music/{taleId}.wav
 - `Editor/OnboardingSetup.cs` + `Editor/SceneSetup.cs` — все `new GameObject(...)` теперь создаются с `typeof(RectTransform)` для корректной работы на Canvas (ранее создавались с обычным Transform)
 
 **Next step:** Phase 5 — Library
+
+---
+
+## Session 5 — 2026-03-10
+
+### Phase 5 — Library ✅
+
+**Files created** (4 files in `Scripts/FairyTales/UI/Library/`):
+
+- `LibraryScreen.cs` — грид карточек сказок
+  - Загрузка через TalesService.GetTales()
+  - GridLayoutGroup 4 колонки, ScrollRect
+  - Кнопки: Settings, Music toggle, Unlock All
+  - Клик по карточке → TaleDetailScreen
+
+- `TaleCard.cs` — компонент карточки
+  - Init(tale, isLocked, onClick) — обложка + название + замок
+  - CoverProvider для загрузки обложек
+
+- `TaleDetailScreen.cs` — детали сказки
+  - Обложка, название, кол-во страниц
+  - 3 кнопки: Читать, Слушать, Озвучить
+  - LoadDetail() — GetTale + Personalize + GetNarrationStatus
+
+- `CoverProvider.cs` — статический хелпер
+  - Resources/Covers/{taleId}
+
+**Editor:**
+- `Editor/LibrarySetup.cs` — menu: FairyTales → Setup Library UI
+  - SetupLibraryScreen, SetupTaleDetailScreen, CreateCardPrefab
+  - Prefab: `Assets/Prefabs/UI/TaleCard.prefab`
+
+**Bugfixes:**
+- `LibrarySetup.cs` — добавлен `using FairyTales.UI.Core` (CS0246)
+- `FindOrAddComponent` — сначала `FindAnyObjectByType<T>(FindObjectsInactive.Include)`
+- `CreateCardPrefab` — вынесен `AssignCardPrefab()` для назначения при повторном запуске
+- ScrollView: заменён `Mask` на `RectMask2D` (Stencil не работает в URP 2D)
+
+### Phase 6 — Reading ✅
+
+**Files created** (4 files in `Scripts/FairyTales/UI/Reading/`):
+
+- `ReadingScreen.cs` — экран чтения
+  - Fullscreen иллюстрация + scrollable текстовая панель (30% снизу)
+  - Кнопки: Home, TOC, Music (top), Prev/Next (bottom)
+  - Авто-озвучка через DefaultNarrationProvider + NarrationPlayer
+  - Home → LibraryScreen
+
+- `PageNavigator.cs` — перелистывание страниц
+  - DOTween fade только на illustrationImage + pageText (кнопки остаются)
+  - ResolveGender() — regex парсер `{m:...|f:...}` плейсхолдеров
+  - Init/NextPage/PrevPage/GoToPage + OnPageChanged event
+
+- `TableOfContentsPopup.cs` — popup оглавление
+  - CanvasGroup fade in/out
+  - Горизонтальный ScrollRect с миниатюрами
+  - Текущая страница — cyan border
+  - Клик по миниатюре → GoToPage + close
+
+- `IllustrationProvider.cs` — статический хелпер
+  - Resources/Illustrations/{taleId}/page_{page}
+
+**Editor:**
+- `Editor/ReadingSetup.cs` — menu: FairyTales → Setup Reading UI
+  - SetupReadingScreen, CreateTocPopup, CreateThumbnailPrefab
+  - Prefab: `Assets/Prefabs/UI/TocThumbnail.prefab`
+
+**Updated:**
+- `TaleDetailScreen.cs` — OnRead() навигирует на ReadingScreen с _detail
+- `TaleDetailScreen.cs` — LoadDetail() вызывает Personalize() для подмены pages
+- `SceneSetup.cs` — ReadingScreen как реальный компонент вместо stub
+
+**Resource paths:**
+```
+Assets/Resources/Illustrations/{taleId}/page_0.png
+Assets/Resources/Illustrations/{taleId}/page_1.png
+```
+
+**Next step:** Phase 7 — Narration
