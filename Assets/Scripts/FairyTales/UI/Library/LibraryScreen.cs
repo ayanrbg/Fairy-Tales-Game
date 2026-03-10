@@ -8,6 +8,7 @@ using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
 using FairyTales.UI.Onboarding;
+using FairyTales.UI.Payment;
 
 namespace FairyTales.UI.Library
 {
@@ -119,9 +120,7 @@ namespace FairyTales.UI.Library
 
         private void OnUnlockAll()
         {
-            var popup = GetComponentInChildren<UnlockPopup>(true);
-            if (popup) popup.Show();
-            else Toast.Show(Loc.Get("unlock_coming_soon"));
+            _screens.Show<PaymentScreen>();
         }
 
         private void OnMusicToggle()

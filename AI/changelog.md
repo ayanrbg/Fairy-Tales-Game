@@ -474,3 +474,91 @@ Scripts/FairyTales/UI/Library/TaleDetailScreen.cs — status fix, ClearUI
 Scripts/FairyTales/Editor/NarrationSetup.cs — panelQuickNarrate UI
 AI/API.md — narrate-all documentation updated
 ```
+
+---
+
+## Session 9 — 2026-03-10
+
+### Phase 9 — Screen Transitions & Payment ✅
+
+#### Coordinated Slide-Up Transitions
+
+Все экраны теперь появляются снизу экрана (slide up) вместо простого fade. При переходе между экранами — эффект свайпа вверх: оба экрана двигаются как единое целое (предыдущий уезжает вверх, новый приезжает снизу).
+
+**BaseScreen.cs** — полный рефактор анимаций:
+- `slideFromBottom` (SerializeField, default true) — включает slide-анимацию
+- `Show()` — slide up from `-Screen.height` + fade in (0.4s, OutCubic)
+- `Hide()` — slide up to `+Screen.height` + fade out (0.4s, InCubic)
+- `PrepareBelow()` / `FinalizeShown()` / `FinalizeHidden()` — для координированных переходов
+- `Rect`, `SlideEnabled`, `AnimDuration` — публичные свойства для ScreenManager
+- ReadingScreen: `slideFromBottom = false` (fullscreen illustration, обычный fade)
+
+**ScreenManager.cs** — координированные переходы:
+- `sharedBackground` (Image) — общий фон за всеми экранами
+- `CoordinatedSlide(prev, next)` — один DOTween Sequence двигает оба экрана с одинаковым easing (InOutCubic) и длительностью → движутся как цельный лист
+- `_transitioning` флаг — блокирует переходы во время анимации
+- Fallback: для экранов с `slideFromBottom = false` — независимые анимации
+
+#### Shared Background
+
+Один общий фон (`SharedBackground` Image) за всеми экранами, вместо отдельного Background в каждом экране.
+
+**SceneSetup.cs** — создаёт `SharedBackground` как первый child канваса:
+- Цвет: `(0.12, 0.08, 0.18)` — тёмно-фиолетовый
+- Привязан к `ScreenManager.sharedBackground`
+
+**Все Editor Setup скрипты** — убраны `AddBackground(root)`:
+- `OnboardingSetup.cs` — удалены 3 вызова + метод + неиспользуемый `BgColor`
+- `LibrarySetup.cs` — удалены 2 вызова + метод + неиспользуемый `BgColor`
+- `NarrationSetup.cs` — удалены 3 вызова + метод + неиспользуемый `BgColor`
+- `ReadingSetup.cs` — `slideFromBottom = false` для ReadingScreen (BgColor сохранён для illustration)
+
+#### PaymentScreen
+
+Экран подписки с выбором тарифа, кнопка в LibraryScreen (`btnUnlockAll`).
+
+**PaymentScreen.cs** — `Scripts/FairyTales/UI/Payment/`:
+- Заголовок "Получите доступ ко всем сказкам!"
+- Кнопка закрытия (✕) → LibraryScreen
+- 2 карточки тарифов: 449 ₽/мес и 2 490 ₽/год
+  - Годовой: бейдж "-55%", зачёркнутая старая цена "5388 ₽/год"
+  - Selection outline при выборе (по умолчанию — годовой)
+- CTA кнопка "Попробовать 3 дня бесплатно" (золотая)
+- Нижние ссылки: Условия / Восстановить покупку / Конфиденциальность
+- TODO: IAP integration
+
+**PaymentSetup.cs** — `Scripts/FairyTales/Editor/`:
+- Menu: `FairyTales/Setup Payment UI`
+- Plan cards с бейджем скидки и зачёркнутой ценой
+- CTA кнопка (золотой цвет), link buttons (фиолетовые)
+
+**LibraryScreen.cs** — `OnUnlockAll()` → `ScreenManager.Show<PaymentScreen>()` (вместо UnlockPopup)
+
+**SceneSetup.cs** — зарегистрирован `PaymentScreen`
+
+**Loc.cs** — новые ключи:
+- `plan_monthly` — "Ежемесячная подписка" / "Ай сайынғы жазылым" / "Monthly plan"
+- `plan_yearly` — "Годовая подписка" / "Жылдық жазылым" / "Yearly plan"
+- `coming_soon` — "Скоро!" / "Жақында!" / "Coming soon!"
+- `restore_coming_soon` — "Восстановление покупок скоро!" / ...
+
+#### New Files
+```
+Scripts/FairyTales/UI/Payment/PaymentScreen.cs
+Scripts/FairyTales/Editor/PaymentSetup.cs
+```
+
+#### Modified Files
+```
+Scripts/FairyTales/UI/Core/BaseScreen.cs — slide-up animations, coordinated transition API
+Scripts/FairyTales/UI/Core/ScreenManager.cs — CoordinatedSlide, sharedBackground, _transitioning
+Scripts/FairyTales/UI/Core/Loc.cs — payment localization keys
+Scripts/FairyTales/UI/Library/LibraryScreen.cs — OnUnlockAll → PaymentScreen
+Scripts/FairyTales/Editor/SceneSetup.cs — SharedBackground, PaymentScreen registration
+Scripts/FairyTales/Editor/OnboardingSetup.cs — removed per-screen backgrounds
+Scripts/FairyTales/Editor/LibrarySetup.cs — removed per-screen backgrounds
+Scripts/FairyTales/Editor/NarrationSetup.cs — removed per-screen backgrounds
+Scripts/FairyTales/Editor/ReadingSetup.cs — slideFromBottom=false for ReadingScreen
+AI/architecture.md — Payment folder, updated flow, Phase 9
+AI/changelog.md — this entry
+```

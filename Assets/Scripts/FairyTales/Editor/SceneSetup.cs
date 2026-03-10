@@ -10,6 +10,7 @@ using FairyTales.UI.Core;
 using FairyTales.UI.Library;
 using FairyTales.UI.Onboarding;
 using FairyTales.UI.Narration;
+using FairyTales.UI.Payment;
 using FairyTales.UI.Reading;
 
 namespace FairyTales.Editor
@@ -107,6 +108,9 @@ namespace FairyTales.Editor
 
             // Reading (Phase 6)
             CreateScreen<ReadingScreen>(canvas.transform);
+
+            // Payment
+            CreateScreen<PaymentScreen>(canvas.transform);
 
             // Narration (Phase 7)
             CreateScreen<NarrationSetupScreen>(canvas.transform);

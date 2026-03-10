@@ -27,6 +27,10 @@ namespace FairyTales.UI.Core
             ["loading"] = new() { ["ru"] = "Загрузка...", ["kz"] = "Жүктелуде...", ["en"] = "Loading..." },
             ["back"] = new() { ["ru"] = "Назад", ["kz"] = "Артқа", ["en"] = "Back" },
             ["unlock_coming_soon"] = new() { ["ru"] = "Скоро будет доступно!", ["kz"] = "Жақында қолжетімді болады!", ["en"] = "Coming soon!" },
+            ["plan_monthly"] = new() { ["ru"] = "Ежемесячная подписка", ["kz"] = "Ай сайынғы жазылым", ["en"] = "Monthly plan" },
+            ["plan_yearly"] = new() { ["ru"] = "Годовая подписка", ["kz"] = "Жылдық жазылым", ["en"] = "Yearly plan" },
+            ["coming_soon"] = new() { ["ru"] = "Скоро!", ["kz"] = "Жақында!", ["en"] = "Coming soon!" },
+            ["restore_coming_soon"] = new() { ["ru"] = "Восстановление покупок скоро!", ["kz"] = "Сатып алуды қалпына келтіру жақында!", ["en"] = "Restore purchases coming soon!" },
         };
 
         public static string Lang

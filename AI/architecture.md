@@ -24,7 +24,13 @@ Assets/
 │       ├── UI/
 │       │   ├── Core/
 │       │   │   ├── ScreenManager.cs
-│       │   │   └── BaseScreen.cs
+│       │   │   ├── BaseScreen.cs
+│       │   │   ├── Loc.cs
+│       │   │   ├── Toast.cs
+│       │   │   ├── ReadingState.cs
+│       │   │   ├── SafeAreaFitter.cs
+│       │   │   ├── UnlockPopup.cs
+│       │   │   └── ButtonScaleEffect.cs
 │       │   ├── Onboarding/
 │       │   │   ├── LanguageSelectScreen.cs
 │       │   │   ├── PersonalizationScreen.cs
@@ -33,6 +39,8 @@ Assets/
 │       │   │   ├── LibraryScreen.cs
 │       │   │   ├── TaleCard.cs
 │       │   │   └── TaleDetailScreen.cs
+│       │   ├── Payment/
+│       │   │   └── PaymentScreen.cs
 │       │   ├── Reading/
 │       │   │   ├── ReadingScreen.cs
 │       │   │   ├── PageNavigator.cs
@@ -58,14 +66,14 @@ Assets/
 ## Screens Flow
 ```
 LanguageSelect → Personalization → Library ←→ Personalization (Settings)
-                                      ↓
-                                 TaleDetail
-                                /    |     \
-                          Reading  Listen  NarrationSetup
-                            ↓                    ↓
-                     TableOfContents    VoiceRecording
-                                              ↓
-                                     NarrationProgress
+                                    ↓    ↘
+                               TaleDetail  PaymentScreen
+                              /    |     \
+                        Reading  Listen  NarrationSetup
+                          ↓                    ↓
+                   TableOfContents    VoiceRecording
+                                            ↓
+                                   NarrationProgress
 ```
 
 ## Development Phases
@@ -118,9 +126,10 @@ NarrationService:
 14. DefaultNarrationProvider.cs — play pre-baked audio from Assets
 
 ### Phase 3 — UI Framework ✅
-15. ScreenManager.cs — screen switching with DOTween fades
-16. BaseScreen.cs — base class (Show/Hide with animations)
-17. Shared UI prefabs (buttons, panels, header) — в Unity Editor
+15. ScreenManager.cs — screen switching with coordinated slide transitions
+16. BaseScreen.cs — base class (slide-up from bottom + fade)
+17. Shared background (one Image behind all screens)
+18. Shared UI prefabs (buttons, panels, header) — в Unity Editor
 
 ### Phase 4 — Onboarding Screens ✅
 18. LanguageSelectScreen
@@ -155,3 +164,8 @@ NarrationService:
 35. State persistence (PlayerPrefs)
 36. Mobile adaptation (Safe Area, resolutions)
 37. Monetization placeholder
+
+### Phase 9 — Screen Transitions & Payment ✅
+38. Coordinated slide-up transitions (swipe-up effect between screens)
+39. Shared background behind all menu screens
+40. PaymentScreen — subscription UI (monthly/yearly plans, trial CTA)
