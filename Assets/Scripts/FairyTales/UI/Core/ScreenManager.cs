@@ -11,6 +11,7 @@ namespace FairyTales.UI.Core
         [SerializeField] private BaseScreen onboardedScreen;
         [SerializeField] private Image sharedBackground;
 
+        private AspectRatioFitter _bgArf;
         private readonly Dictionary<System.Type, BaseScreen> _screens = new();
         private BaseScreen _current;
         private bool _transitioning;
@@ -25,7 +26,10 @@ namespace FairyTales.UI.Core
             }
 
             if (sharedBackground != null)
+            {
                 sharedBackground.gameObject.SetActive(true);
+                _bgArf = sharedBackground.GetComponent<AspectRatioFitter>();
+            }
         }
 
         private void Start()
@@ -107,5 +111,20 @@ namespace FairyTales.UI.Core
         }
 
         public BaseScreen Current => _current;
+
+        /// <summary>
+        /// Sets shared background sprite with proper aspect ratio scaling.
+        /// Pass null to clear (reverts to solid color).
+        /// </summary>
+        public void SetBackground(Sprite sprite)
+        {
+            if (sharedBackground == null) return;
+
+            sharedBackground.sprite = sprite;
+            sharedBackground.color = sprite != null ? Color.white : new Color(0.12f, 0.08f, 0.18f);
+
+            if (_bgArf && sprite != null)
+                _bgArf.aspectRatio = (float)sprite.texture.width / sprite.texture.height;
+        }
     }
 }

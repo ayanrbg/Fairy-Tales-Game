@@ -96,6 +96,11 @@ namespace FairyTales.Editor
             bgRt.offsetMax = Vector2.zero;
             var bgImg = bgGo.AddComponent<Image>();
             bgImg.color = new Color(0.12f, 0.08f, 0.18f);
+            bgImg.preserveAspect = false;
+
+            var bgArf = bgGo.AddComponent<AspectRatioFitter>();
+            bgArf.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            bgArf.aspectRatio = 9f / 16f; // default portrait
 
             // Screens with real components (onboarding)
             CreateScreen<LanguageSelectScreen>(canvas.transform);

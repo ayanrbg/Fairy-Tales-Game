@@ -41,8 +41,13 @@ namespace FairyTales.Editor
             Stretch(illustGo);
             var illustImg = illustGo.AddComponent<Image>();
             illustImg.color = BgColor;
-            illustImg.preserveAspect = true;
+            illustImg.preserveAspect = false;
             illustImg.raycastTarget = false;
+
+            // EnvelopeParent = fill screen, crop edges (like CSS cover)
+            var arf = illustGo.AddComponent<AspectRatioFitter>();
+            arf.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            arf.aspectRatio = 9f / 16f; // default portrait; overridden at runtime
 
             // Content group (for page fade transitions)
             var contentGo = new GameObject("ContentGroup", typeof(RectTransform));
@@ -91,11 +96,12 @@ namespace FairyTales.Editor
             Stretch(pageTextGo);
             var pageTmp = pageTextGo.AddComponent<TextMeshProUGUI>();
             pageTmp.text = "";
-            pageTmp.fontSize = 22;
+            pageTmp.fontSize = 22; // default, overridden by ReadingTextScaler
             pageTmp.alignment = TextAlignmentOptions.TopLeft;
             pageTmp.color = Color.white;
             pageTmp.enableWordWrapping = true;
             pageTmp.overflowMode = TextOverflowModes.Overflow;
+            pageTmp.lineSpacing = 8f;
 
             // Nav arrows
             var btnPrev = CreateIconButton(contentGo.transform, "BtnPrev", "\u25C0",
@@ -112,6 +118,14 @@ namespace FairyTales.Editor
             navSo.FindProperty("illustrationImage").objectReferenceValue = illustImg;
             navSo.FindProperty("pageText").objectReferenceValue = pageTmp;
             navSo.ApplyModifiedProperties();
+
+            // ReadingTextScaler — auto font/panel sizing
+            var scaler = screen.gameObject.AddComponent<ReadingTextScaler>();
+            var scalerSo = new SerializedObject(scaler);
+            scalerSo.FindProperty("pageText").objectReferenceValue = pageTmp;
+            scalerSo.FindProperty("textPanel").objectReferenceValue =
+                textPanel.GetComponent<RectTransform>();
+            scalerSo.ApplyModifiedProperties();
 
             // Wire ReadingScreen (no slide — fullscreen illustration)
             var so = new SerializedObject(screen);

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using FairyTales.UI.Core;
@@ -6,6 +7,8 @@ namespace FairyTales.UI.Payment
 {
     public class PaymentScreen : BaseScreen
     {
+        [SerializeField] private Image background;
+        [SerializeField] private float bgFadeDuration = 0.5f;
         [SerializeField] private Button btnClose;
         [SerializeField] private Button btnMonthly;
         [SerializeField] private Button btnYearly;
@@ -23,6 +26,7 @@ namespace FairyTales.UI.Payment
         {
             _screens = GetComponentInParent<ScreenManager>();
 
+            if (background) SetBgAlpha(0f);
             if (btnClose) btnClose.onClick.AddListener(OnClose);
             if (btnMonthly) btnMonthly.onClick.AddListener(() => SelectPlan(false));
             if (btnYearly) btnYearly.onClick.AddListener(() => SelectPlan(true));
@@ -35,6 +39,19 @@ namespace FairyTales.UI.Payment
         protected override void OnShown()
         {
             SelectPlan(true);
+            if (background) background.DOFade(1f, bgFadeDuration).SetEase(Ease.OutQuad);
+        }
+
+        protected override void OnHidden()
+        {
+            if (background) SetBgAlpha(0f);
+        }
+
+        private void SetBgAlpha(float a)
+        {
+            var c = background.color;
+            c.a = a;
+            background.color = c;
         }
 
         private void SelectPlan(bool yearly)
@@ -55,7 +72,15 @@ namespace FairyTales.UI.Payment
 
         private void OnClose()
         {
-            _screens.Show<Library.LibraryScreen>();
+            if (background)
+            {
+                background.DOFade(0f, bgFadeDuration).SetEase(Ease.InQuad)
+                    .OnComplete(() => _screens.Show<Library.LibraryScreen>());
+            }
+            else
+            {
+                _screens.Show<Library.LibraryScreen>();
+            }
         }
 
         private void OnTerms()

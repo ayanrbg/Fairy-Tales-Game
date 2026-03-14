@@ -19,7 +19,10 @@ namespace FairyTales.UI.Library
         [SerializeField] private Button btnSettings;
         [SerializeField] private Button btnMusic;
         [SerializeField] private Button btnUnlockAll;
-
+        [SerializeField] private GameObject selectionBtnMusicOff;
+        [SerializeField] private GameObject selectionBtnMusicOn;
+        [SerializeField] private BackgroundMusicManager backgroundMusicManager;
+        
         private ScreenManager _screens;
         private AuthService _auth;
         private TalesService _tales;
@@ -36,11 +39,16 @@ namespace FairyTales.UI.Library
             if (btnSettings) btnSettings.onClick.AddListener(OnSettings);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
             if (btnUnlockAll) btnUnlockAll.onClick.AddListener(OnUnlockAll);
+            
+            selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
+            selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
         protected override void OnShown()
         {
             StartCoroutine(EnsureRegisteredAndLoad());
+            selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
+            selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
         private IEnumerator EnsureRegisteredAndLoad()
@@ -125,8 +133,9 @@ namespace FairyTales.UI.Library
 
         private void OnMusicToggle()
         {
-            var bgm = FindAnyObjectByType<BackgroundMusicManager>();
-            if (bgm) bgm.SetMuted(!bgm.IsMuted);
+            if (backgroundMusicManager) backgroundMusicManager.SetMuted(!backgroundMusicManager.IsMuted);
+            selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
+            selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
         private string GetOrCreateUserId()
