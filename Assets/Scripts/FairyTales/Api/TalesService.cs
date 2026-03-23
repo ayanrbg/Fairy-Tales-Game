@@ -28,9 +28,12 @@ namespace FairyTales.Api
         }
 
         public IEnumerator GetTale(string taleId,
-            Action<TaleDetail> onSuccess, Action<string> onError = null)
+            Action<TaleDetail> onSuccess, Action<string> onError = null,
+            string lang = null)
         {
-            yield return _api.Get($"/api/tales/{taleId}",
+            var query = string.IsNullOrEmpty(lang) ? "" : $"?lang={lang}";
+
+            yield return _api.Get($"/api/tales/{taleId}{query}",
                 json =>
                 {
                     var tale = JsonConvert.DeserializeObject<TaleDetail>(json);

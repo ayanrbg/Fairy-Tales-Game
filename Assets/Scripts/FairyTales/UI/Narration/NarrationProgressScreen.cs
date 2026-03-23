@@ -36,13 +36,16 @@ namespace FairyTales.UI.Narration
 
         public void SetContext(TaleSummary tale) => _tale = tale;
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             if (btnDone) btnDone.gameObject.SetActive(false);
             if (progressBar) progressBar.value = 0f;
             if (statusText) statusText.text = "Идёт озвучка...";
             if (pagesText) pagesText.text = "";
+        }
 
+        protected override void OnShown()
+        {
             _polling = StartCoroutine(PollStatus());
         }
 

@@ -26,6 +26,7 @@ namespace FairyTales.UI.Core
         public virtual void Show(Action onComplete = null)
         {
             gameObject.SetActive(true);
+            OnPrepare();
             CanvasGroup.alpha = 0f;
             CanvasGroup.interactable = false;
 
@@ -72,10 +73,12 @@ namespace FairyTales.UI.Core
         public void PrepareBelow()
         {
             gameObject.SetActive(true);
+            OnPrepare();
             CanvasGroup.alpha = 1f;
             CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
             Rect.anchoredPosition = new Vector2(0f, -Screen.height);
+            Canvas.ForceUpdateCanvases();
         }
 
         /// <summary>Finalize after coordinated slide-in completed.</summary>
@@ -101,6 +104,7 @@ namespace FairyTales.UI.Core
         public void ShowImmediate()
         {
             gameObject.SetActive(true);
+            OnPrepare();
             Rect.anchoredPosition = Vector2.zero;
             CanvasGroup.alpha = 1f;
             CanvasGroup.interactable = true;
@@ -118,6 +122,8 @@ namespace FairyTales.UI.Core
             OnHidden();
         }
 
+        /// <summary>Called before animation starts. Populate UI here so it's visible during transition.</summary>
+        protected virtual void OnPrepare() { }
         protected virtual void OnShown() { }
         protected virtual void OnHidden() { }
     }

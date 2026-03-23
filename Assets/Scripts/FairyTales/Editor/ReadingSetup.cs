@@ -127,6 +127,9 @@ namespace FairyTales.Editor
                 textPanel.GetComponent<RectTransform>();
             scalerSo.ApplyModifiedProperties();
 
+            // Recording overlay panel (above top bar, initially hidden)
+            var recOverlay = CreateRecordingOverlay(contentGo.transform);
+
             // Wire ReadingScreen (no slide — fullscreen illustration)
             var so = new SerializedObject(screen);
             so.FindProperty("slideFromBottom").boolValue = false;
@@ -141,7 +144,62 @@ namespace FairyTales.Editor
                 btnPrev.GetComponent<Button>();
             so.FindProperty("btnNext").objectReferenceValue =
                 btnNext.GetComponent<Button>();
+            so.FindProperty("recordingOverlay").objectReferenceValue =
+                recOverlay.GetComponent<RecordingOverlay>();
             so.ApplyModifiedProperties();
+        }
+
+        private static GameObject CreateRecordingOverlay(Transform parent)
+        {
+            var recColor = new Color(0.12f, 0.08f, 0.18f, 0.92f);
+            var recBtnColor = new Color(0.85f, 0.25f, 0.25f);
+            var recDoneDisabled = new Color(0.4f, 0.4f, 0.4f);
+
+            var panel = new GameObject("RecordingPanel", typeof(RectTransform));
+            panel.transform.SetParent(parent, false);
+            Anchor(panel, new Vector2(0f, 0.84f), new Vector2(1f, 0.92f));
+            panel.AddComponent<Image>().color = recColor;
+
+            // Timer
+            var timerGo = CreateTMP(panel.transform, "Timer", "00:00",
+                20, TextAlignmentOptions.Center,
+                new Vector2(0.02f, 0.1f), new Vector2(0.2f, 0.9f));
+
+            // Status
+            var statusGo = CreateTMP(panel.transform, "Status", "",
+                16, TextAlignmentOptions.Center,
+                new Vector2(0.2f, 0.1f), new Vector2(0.6f, 0.9f));
+
+            // BtnRecord / Rerecord (single button, icon swaps)
+            var btnRec = CreateIconButton(panel.transform, "BtnRecord", "\u23FA",
+                new Vector2(0.62f, 0.1f), new Vector2(0.78f, 0.9f));
+            btnRec.GetComponent<Image>().color = recBtnColor;
+            var recIconTmp = btnRec.GetComponentInChildren<TMP_Text>();
+
+            // BtnDone (enabled/disabled visual via Image color)
+            var btnDone = CreateIconButton(panel.transform, "BtnDone", "\u2713",
+                new Vector2(0.82f, 0.1f), new Vector2(0.98f, 0.9f));
+            var doneImg = btnDone.GetComponent<Image>();
+            doneImg.color = recDoneDisabled;
+
+            // Add RecordingOverlay component
+            var overlay = panel.AddComponent<RecordingOverlay>();
+            var overlaySo = new SerializedObject(overlay);
+            overlaySo.FindProperty("panel").objectReferenceValue = panel;
+            overlaySo.FindProperty("timerText").objectReferenceValue =
+                timerGo.GetComponent<TMP_Text>();
+            overlaySo.FindProperty("statusText").objectReferenceValue =
+                statusGo.GetComponent<TMP_Text>();
+            overlaySo.FindProperty("btnRecord").objectReferenceValue =
+                btnRec.GetComponent<Button>();
+            overlaySo.FindProperty("recordIcon").objectReferenceValue = recIconTmp;
+            overlaySo.FindProperty("btnDone").objectReferenceValue =
+                btnDone.GetComponent<Button>();
+            overlaySo.FindProperty("doneImage").objectReferenceValue = doneImg;
+            overlaySo.ApplyModifiedProperties();
+
+            panel.SetActive(false);
+            return panel;
         }
 
         private static GameObject CreateTocPopup(Transform root)

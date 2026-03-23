@@ -56,7 +56,7 @@ namespace FairyTales.Api
         public IEnumerator DownloadNarratedPage(string taleId, int page,
             Action<byte[]> onSuccess, Action<string> onError = null)
         {
-            yield return _api.GetAudio(
+            yield return _api.GetBytes(
                 $"/api/tales/{taleId}/narration/{page}",
                 onSuccess, onError
             );

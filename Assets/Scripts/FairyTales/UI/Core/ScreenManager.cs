@@ -18,6 +18,8 @@ namespace FairyTales.UI.Core
 
         private void Awake()
         {
+            Cache.AssetCache.MigrateIfNeeded();
+
             var all = GetComponentsInChildren<BaseScreen>(true);
             foreach (var screen in all)
             {

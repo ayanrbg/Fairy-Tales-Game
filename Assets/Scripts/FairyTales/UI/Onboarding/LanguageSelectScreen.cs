@@ -38,7 +38,7 @@ namespace FairyTales.UI.Onboarding
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             var saved = PlayerPrefs.GetString("ft_lang", "ru");
             SelectLang(saved);

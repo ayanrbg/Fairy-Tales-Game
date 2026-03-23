@@ -6,6 +6,7 @@ using TMPro;
 using FairyTales.Api;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using FairyTales.Cache;
 using FairyTales.UI.Library;
 
 namespace FairyTales.UI.Onboarding
@@ -30,9 +31,13 @@ namespace FairyTales.UI.Onboarding
             _tales = new TalesService(_api);
         }
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             SetProgress(0f, "Подготавливаем библиотеку...");
+        }
+
+        protected override void OnShown()
+        {
             StartCoroutine(RunOnboarding());
         }
 
@@ -88,13 +93,23 @@ namespace FairyTales.UI.Onboarding
             }
 
             SetProgress(1f, "Готово!");
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.3f);
 
             OnLoadingComplete?.Invoke();
             PlayerPrefs.SetInt("ft_onboarded", 1);
             PlayerPrefs.Save();
 
-            _screens.Show<LibraryScreen>();
+            // Download covers, then show library
+            var download = _screens.Get<DownloadScreen>();
+            if (download != null && tales != null)
+            {
+                download.SetTales(tales);
+                _screens.Show<DownloadScreen>();
+            }
+            else
+            {
+                _screens.Show<LibraryScreen>();
+            }
         }
 
         private void SetProgress(float value, string text)

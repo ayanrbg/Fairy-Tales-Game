@@ -1,4 +1,9 @@
+using System;
+using System.Collections;
+using FairyTales.Api;
 using FairyTales.Audio;
+using FairyTales.Cache;
+using FairyTales.Models;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -16,7 +21,7 @@ namespace FairyTales.UI.Onboarding
         [SerializeField] private Button btnContinue;
         [SerializeField] private Button btnChangeLang;
         [SerializeField] private Button btnMusic;
-        
+
         [Header("Selection visuals")]
         [SerializeField] private GameObject selectedBoy;
         [SerializeField] private GameObject selectedGirl;
@@ -24,15 +29,22 @@ namespace FairyTales.UI.Onboarding
         [SerializeField] private GameObject selectionBtnMusicOn;
         private string _gender = "male";
         private ScreenManager _screens;
+        private AuthService _auth;
+        private TalesService _tales;
+
         private void OnMusicToggle()
         {
             if (backgroundMusicManager) backgroundMusicManager.SetMuted(!backgroundMusicManager.IsMuted);
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
+
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
+            var api = FindAnyObjectByType<ApiClient>();
+            _auth = new AuthService(api);
+            _tales = new TalesService(api);
 
             btnBoy.onClick.AddListener(() => SelectGender("male"));
             btnGirl.onClick.AddListener(() => SelectGender("female"));
@@ -46,7 +58,7 @@ namespace FairyTales.UI.Onboarding
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             var savedGender = PlayerPrefs.GetString("ft_gender", "male");
             SelectGender(savedGender);
@@ -75,7 +87,56 @@ namespace FairyTales.UI.Onboarding
             PlayerPrefs.SetString("ft_gender", _gender);
             PlayerPrefs.Save();
 
+            btnContinue.interactable = false;
+            StartCoroutine(RegisterAndRoute(childName));
+        }
+
+        private IEnumerator RegisterAndRoute(string childName)
+        {
+            var userId = GetOrCreateUserId();
+            var lang = PlayerPrefs.GetString("ft_lang", "ru");
+
+            // Register / login
+            yield return _auth.Register(userId, childName, _gender, lang,
+                onSuccess: _ => { },
+                onError: e => Debug.LogWarning($"[Personalization] Register: {e}"));
+
+            // Load tale list
+            TaleSummary[] tales = null;
+            yield return _tales.GetTales(lang,
+                onSuccess: t => tales = t,
+                onError: e => Debug.LogError($"[Personalization] Tales: {e}"));
+
+            btnContinue.interactable = true;
+
+            if (tales != null && HasMissingCovers(tales))
+            {
+                var download = _screens.Get<DownloadScreen>();
+                if (download != null)
+                {
+                    download.SetTales(tales);
+                    _screens.Show<DownloadScreen>();
+                    yield break;
+                }
+            }
+
             _screens.Show<LibraryScreen>();
+        }
+
+        private bool HasMissingCovers(TaleSummary[] tales)
+        {
+            foreach (var t in tales)
+                if (!AssetCache.IsCoverDownloaded(t.id)) return true;
+            return false;
+        }
+
+        private string GetOrCreateUserId()
+        {
+            var id = PlayerPrefs.GetString("ft_userId", "");
+            if (!string.IsNullOrEmpty(id)) return id;
+            id = Guid.NewGuid().ToString();
+            PlayerPrefs.SetString("ft_userId", id);
+            return id;
         }
     }
 }

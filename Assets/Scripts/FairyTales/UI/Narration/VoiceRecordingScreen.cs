@@ -57,12 +57,11 @@ namespace FairyTales.UI.Narration
             _recordedAudio = null;
         }
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             _mic = FindAnyObjectByType<MicRecorder>();
             _player = FindAnyObjectByType<NarrationPlayer>();
 
-            // Show all 4 sample sentences
             if (sampleText)
                 sampleText.text = string.Join("\n\n", Samples);
 

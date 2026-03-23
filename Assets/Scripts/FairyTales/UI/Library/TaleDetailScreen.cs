@@ -4,9 +4,11 @@ using UnityEngine.UI;
 using TMPro;
 using FairyTales.Api;
 using FairyTales.Audio;
+using FairyTales.Cache;
 using FairyTales.Models;
 using FairyTales.UI.Core;
 using FairyTales.UI.Narration;
+using FairyTales.UI.Onboarding;
 using FairyTales.UI.Reading;
 
 namespace FairyTales.UI.Library
@@ -56,11 +58,16 @@ namespace FairyTales.UI.Library
             if (titleText) titleText.text = "";
             if (pageCountText) pageCountText.text = "";
             if (coverImage) coverImage.sprite = null;
+            if (btnListen) btnListen.gameObject.SetActive(false);
+        }
+
+        protected override void OnPrepare()
+        {
+            UpdateUI();
         }
 
         protected override void OnShown()
         {
-            UpdateUI();
             StartCoroutine(LoadDetail());
         }
 
@@ -96,40 +103,64 @@ namespace FairyTales.UI.Library
             yield return _narration.GetNarrationStatus(_tale.id,
                 onSuccess: s => _hasAiNarration = s.status == "done" || s.status == "ready",
                 onError: _ => _hasAiNarration = false);
+
+            UpdateListenButton();
+        }
+
+        private void UpdateListenButton()
+        {
+            if (!btnListen) return;
+            bool hasDefault = _defaultNarration.HasAnyNarration(_tale?.id ?? "");
+            btnListen.gameObject.SetActive(_hasAiNarration || hasDefault);
         }
 
         private void OnRead()
         {
             if (_detail == null) return;
-
-            var reading = _screens.Get<ReadingScreen>();
-            if (reading == null) return;
-
-            reading.SetTale(_detail);
-            _screens.Show<ReadingScreen>();
+            EnsureDownloadedThen(NarrationMode.None);
         }
 
         private void OnListen()
         {
             if (_detail == null) return;
 
+            if (_hasAiNarration)
+                EnsureDownloadedThen(NarrationMode.AI);
+            else if (_defaultNarration.HasAnyNarration(_tale?.id ?? ""))
+                EnsureDownloadedThen(NarrationMode.Default);
+            else
+                ShowNoNarrationToast();
+        }
+
+        private void EnsureDownloadedThen(NarrationMode mode)
+        {
+            if (AssetCache.IsTaleDownloaded(_tale.id))
+            {
+                Debug.Log($"[TaleDetail] Tale {_tale.id} already cached, opening");
+                OpenReading(mode);
+                return;
+            }
+
+            var download = _screens.Get<DownloadScreen>();
+            if (download == null)
+            {
+                Debug.LogError("[TaleDetail] DownloadScreen not found in scene!");
+                OpenReading(mode);
+                return;
+            }
+
+            Debug.Log($"[TaleDetail] Starting download for {_tale.id}");
+            download.SetSingleTale(_tale, () => OpenReading(mode));
+            _screens.Show<DownloadScreen>();
+        }
+
+        private void OpenReading(NarrationMode mode)
+        {
             var reading = _screens.Get<ReadingScreen>();
             if (reading == null) return;
 
-            if (_hasAiNarration)
-            {
-                reading.SetTale(_detail, NarrationMode.AI);
-                _screens.Show<ReadingScreen>();
-            }
-            else if (_defaultNarration.HasAnyNarration(_tale?.id ?? ""))
-            {
-                reading.SetTale(_detail, NarrationMode.Default);
-                _screens.Show<ReadingScreen>();
-            }
-            else
-            {
-                ShowNoNarrationToast();
-            }
+            reading.SetTale(_detail, mode);
+            _screens.Show<ReadingScreen>();
         }
 
         private void ShowNoNarrationToast()
@@ -139,11 +170,14 @@ namespace FairyTales.UI.Library
 
         private void OnNarrate()
         {
-            var setup = _screens.Get<NarrationSetupScreen>();
-            if (setup == null) return;
+            ChildGatePopup.Show(() =>
+            {
+                var setup = _screens.Get<NarrationSetupScreen>();
+                if (setup == null) return;
 
-            setup.SetTale(_tale);
-            _screens.Show<NarrationSetupScreen>();
+                setup.SetTale(_tale, _detail);
+                _screens.Show<NarrationSetupScreen>();
+            });
         }
 
         private void OnBack()

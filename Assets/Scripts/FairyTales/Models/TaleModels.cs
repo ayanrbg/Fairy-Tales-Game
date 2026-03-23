@@ -9,6 +9,8 @@ namespace FairyTales.Models
         public string title;
         public string lang;
         public string file;
+        public bool hasDefaultNarration;
+        public string coverUrl;
     }
 
     [Serializable]
@@ -32,5 +34,13 @@ namespace FairyTales.Models
     public class PersonalizeResponse
     {
         public string[] pages;
+    }
+
+    [Serializable]
+    public class DefaultNarrationInfo
+    {
+        public bool available;
+        public string lang;
+        public int[] pages;
     }
 }

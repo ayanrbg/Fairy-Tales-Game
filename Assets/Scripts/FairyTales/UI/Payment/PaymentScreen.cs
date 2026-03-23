@@ -1,6 +1,8 @@
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FairyTales.IAP;
 using FairyTales.UI.Core;
 
 namespace FairyTales.UI.Payment
@@ -18,6 +20,9 @@ namespace FairyTales.UI.Payment
         [SerializeField] private Button btnPrivacy;
         [SerializeField] private GameObject monthlySelect;
         [SerializeField] private GameObject yearlySelect;
+        [SerializeField] private TextMeshProUGUI txtMonthlyPrice;
+        [SerializeField] private TextMeshProUGUI txtYearlyPrice;
+        [SerializeField] private TextMeshProUGUI txtTrialLabel;
 
         private ScreenManager _screens;
         private bool _yearlySelected = true;
@@ -30,15 +35,20 @@ namespace FairyTales.UI.Payment
             if (btnClose) btnClose.onClick.AddListener(OnClose);
             if (btnMonthly) btnMonthly.onClick.AddListener(() => SelectPlan(false));
             if (btnYearly) btnYearly.onClick.AddListener(() => SelectPlan(true));
-            if (btnTrial) btnTrial.onClick.AddListener(OnTrial);
+            if (btnTrial) btnTrial.onClick.AddListener(OnPurchase);
             if (btnTerms) btnTerms.onClick.AddListener(OnTerms);
             if (btnRestore) btnRestore.onClick.AddListener(OnRestore);
             if (btnPrivacy) btnPrivacy.onClick.AddListener(OnPrivacy);
         }
 
-        protected override void OnShown()
+        protected override void OnPrepare()
         {
             SelectPlan(true);
+            UpdatePrices();
+        }
+
+        protected override void OnShown()
+        {
             if (background) background.DOFade(1f, bgFadeDuration).SetEase(Ease.OutQuad);
         }
 
@@ -59,15 +69,63 @@ namespace FairyTales.UI.Payment
             _yearlySelected = yearly;
             if (monthlySelect) monthlySelect.SetActive(!yearly);
             if (yearlySelect) yearlySelect.SetActive(yearly);
+            UpdateTrialButton();
         }
 
-        private void OnTrial()
+        private void UpdatePrices()
         {
-            // TODO: IAP integration
-            var plan = _yearlySelected
-                ? Loc.Get("plan_yearly")
-                : Loc.Get("plan_monthly");
-            Toast.Show($"{plan} — {Loc.Get("coming_soon")}");
+            var iap = IAPManager.Instance;
+            if (iap == null || !iap.IsInitialized) return;
+
+            var monthlyPrice = iap.GetLocalizedPrice(IAPManager.ProductMonthly);
+            var yearlyPrice = iap.GetLocalizedPrice(IAPManager.ProductYearly);
+
+            if (txtMonthlyPrice && monthlyPrice != null)
+                txtMonthlyPrice.text = $"{monthlyPrice}/{Loc.Get("per_month")}";
+            if (txtYearlyPrice && yearlyPrice != null)
+                txtYearlyPrice.text = $"{yearlyPrice}/{Loc.Get("per_year")}";
+        }
+
+        private void UpdateTrialButton()
+        {
+            if (!txtTrialLabel) return;
+
+            var iap = IAPManager.Instance;
+            var productId = _yearlySelected
+                ? IAPManager.ProductYearly
+                : IAPManager.ProductMonthly;
+
+            bool hasTrial = iap != null && iap.IsInitialized && iap.HasTrialAvailable(productId);
+            txtTrialLabel.text = hasTrial
+                ? Loc.Get("start_trial")
+                : Loc.Get("subscribe");
+        }
+
+        private void OnPurchase()
+        {
+            var iap = IAPManager.Instance;
+            if (iap == null || !iap.IsInitialized)
+            {
+                Toast.Show(Loc.Get("iap_not_ready"));
+                return;
+            }
+
+            var productId = _yearlySelected
+                ? IAPManager.ProductYearly
+                : IAPManager.ProductMonthly;
+
+            SetButtonsInteractable(false);
+
+            iap.Purchase(productId, success =>
+            {
+                SetButtonsInteractable(true);
+
+                if (success)
+                {
+                    Toast.Show(Loc.Get("purchase_success"));
+                    OnClose();
+                }
+            });
         }
 
         private void OnClose()
@@ -83,19 +141,49 @@ namespace FairyTales.UI.Payment
             }
         }
 
+        private void OnRestore()
+        {
+            var iap = IAPManager.Instance;
+            if (iap == null || !iap.IsInitialized)
+            {
+                Toast.Show(Loc.Get("iap_not_ready"));
+                return;
+            }
+
+            SetButtonsInteractable(false);
+
+            iap.RestorePurchases(success =>
+            {
+                SetButtonsInteractable(true);
+
+                if (success && iap.IsSubscribed)
+                {
+                    Toast.Show(Loc.Get("restore_success"));
+                    OnClose();
+                }
+                else
+                {
+                    Toast.Show(Loc.Get("restore_none"));
+                }
+            });
+        }
+
         private void OnTerms()
         {
             Application.OpenURL("https://example.com/terms");
         }
 
-        private void OnRestore()
-        {
-            Toast.Show(Loc.Get("restore_coming_soon"));
-        }
-
         private void OnPrivacy()
         {
             Application.OpenURL("https://example.com/privacy");
+        }
+
+        private void SetButtonsInteractable(bool interactable)
+        {
+            if (btnTrial) btnTrial.interactable = interactable;
+            if (btnRestore) btnRestore.interactable = interactable;
+            if (btnMonthly) btnMonthly.interactable = interactable;
+            if (btnYearly) btnYearly.interactable = interactable;
         }
     }
 }

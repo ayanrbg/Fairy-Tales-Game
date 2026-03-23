@@ -19,6 +19,7 @@ namespace FairyTales.UI.Library
         [SerializeField] private Button btnSettings;
         [SerializeField] private Button btnMusic;
         [SerializeField] private Button btnUnlockAll;
+        [SerializeField] private Button btnEmail;
         [SerializeField] private GameObject selectionBtnMusicOff;
         [SerializeField] private GameObject selectionBtnMusicOn;
         [SerializeField] private BackgroundMusicManager backgroundMusicManager;
@@ -28,7 +29,6 @@ namespace FairyTales.UI.Library
         private TalesService _tales;
         private TaleSummary[] _loadedTales;
         private bool _registered;
-
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
@@ -39,7 +39,14 @@ namespace FairyTales.UI.Library
             if (btnSettings) btnSettings.onClick.AddListener(OnSettings);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
             if (btnUnlockAll) btnUnlockAll.onClick.AddListener(OnUnlockAll);
+            if (btnEmail) btnEmail.onClick.AddListener(OnEmail);
             
+            selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
+            selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
+        }
+
+        protected override void OnPrepare()
+        {
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
@@ -47,8 +54,6 @@ namespace FairyTales.UI.Library
         protected override void OnShown()
         {
             StartCoroutine(EnsureRegisteredAndLoad());
-            selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
-            selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
         private IEnumerator EnsureRegisteredAndLoad()
@@ -80,12 +85,12 @@ namespace FairyTales.UI.Library
             var lang = PlayerPrefs.GetString("ft_lang", "ru");
 
             yield return _tales.GetTales(lang,
-                onSuccess: tales =>
-                {
-                    _loadedTales = tales;
-                    BuildGrid();
-                },
+                onSuccess: tales => _loadedTales = tales,
                 onError: e => Debug.LogError($"[Library] {e}"));
+
+            if (_loadedTales == null) yield break;
+
+            BuildGrid();
         }
 
         private void BuildGrid()
@@ -102,13 +107,6 @@ namespace FairyTales.UI.Library
                 go.SetActive(true);
                 var card = go.GetComponent<TaleCard>();
                 card.Init(tale, false, OnCardClick);
-
-                // Staggered scale-in animation
-                var t = go.transform;
-                t.localScale = Vector3.zero;
-                t.DOScale(Vector3.one, 0.3f)
-                    .SetDelay(i * 0.05f)
-                    .SetEase(Ease.OutBack);
             }
         }
 
@@ -128,7 +126,17 @@ namespace FairyTales.UI.Library
 
         private void OnUnlockAll()
         {
-            _screens.Show<PaymentScreen>();
+            ChildGatePopup.Show(() => _screens.Show<PaymentScreen>());
+        }
+
+        private void OnEmail()
+        {
+            ChildGatePopup.Show(() =>
+            {
+                var email = "support@fairytales.app";
+                var subject = Uri.EscapeDataString(Loc.Get("email_subject"));
+                Application.OpenURL($"mailto:{email}?subject={subject}");
+            });
         }
 
         private void OnMusicToggle()

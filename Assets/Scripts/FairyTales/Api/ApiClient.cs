@@ -27,8 +27,8 @@ namespace FairyTales.Api
             HandleResponse(request, onSuccess, onError);
         }
 
-        // ── GET (binary — audio) ─────────────────────────
-        public IEnumerator GetAudio(string endpoint,
+        // ── GET (binary — audio, images, any raw bytes) ──
+        public IEnumerator GetBytes(string endpoint,
             Action<byte[]> onSuccess, Action<string> onError = null)
         {
             using var request = UnityWebRequest.Get($"{baseUrl}{endpoint}");
