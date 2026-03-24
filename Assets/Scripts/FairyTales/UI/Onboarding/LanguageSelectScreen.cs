@@ -1,7 +1,8 @@
 using FairyTales.Audio;
+using FairyTales.UI.Core;
 using UnityEngine;
 using UnityEngine.UI;
-using FairyTales.UI.Core;
+using UnityEngine.Localization.Settings;
 
 namespace FairyTales.UI.Onboarding
 {
@@ -40,8 +41,17 @@ namespace FairyTales.UI.Onboarding
 
         protected override void OnPrepare()
         {
-            var saved = PlayerPrefs.GetString("ft_lang", "ru");
-            SelectLang(saved);
+            // First launch — auto-detect device language
+            if (!PlayerPrefs.HasKey("ft_lang"))
+            {
+                var detected = Loc.DetectSystemLang();
+                SelectLang(detected);
+            }
+            else
+            {
+                SelectLang(Loc.Lang);
+            }
+
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
@@ -52,14 +62,15 @@ namespace FairyTales.UI.Onboarding
             if (selectedRu) selectedRu.SetActive(lang == "ru");
             if (selectedKz) selectedKz.SetActive(lang == "kz");
             if (selectedEn) selectedEn.SetActive(lang == "en");
+            Loc.ApplyLocale(lang);
         }
 
         private void OnContinue()
         {
-            PlayerPrefs.SetString("ft_lang", _selectedLang);
-            PlayerPrefs.Save();
+            Loc.Lang = _selectedLang;
             _screens.Show<PersonalizationScreen>();
         }
+
         private void OnMusicToggle()
         {
             if (backgroundMusicManager) backgroundMusicManager.SetMuted(!backgroundMusicManager.IsMuted);

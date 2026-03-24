@@ -14,7 +14,115 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
   m_TableCollectionName: Table
   m_TableCollectionNameGuidString: e5e802c0d2b080e4d921feed091eb68f
-  m_Entries: []
+  m_Entries:
+  - m_Id: 41117467488256
+    m_Key: choose_lang
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41219682676736
+    m_Key: continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41269360013312
+    m_Key: who_will_be_hero
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41359734681600
+    m_Key: boy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41379049451520
+    m_Key: girl
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41406610223104
+    m_Key: child_name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41470569164800
+    m_Key: prepare_library
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41651758903296
+    m_Key: personalize_text
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41728770519040
+    m_Key: download_tale
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41797116702720
+    m_Key: unlock_all_books
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41870852567040
+    m_Key: read
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41910010589184
+    m_Key: narrate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41935625203712
+    m_Key: listen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41997755428864
+    m_Key: try_3_days
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42080202862592
+    m_Key: usage_rules
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42146384785408
+    m_Key: restore_purchases
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42204375232512
+    m_Key: privacy_policy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42278228537344
+    m_Key: monthly
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42375049850880
+    m_Key: yearly
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42420583215104
+    m_Key: narrate_book
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42479991336960
+    m_Key: new_record
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42528615903232
+    m_Key: name_of_dictor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42571360055296
+    m_Key: drafts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42594013491200
+    m_Key: start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42617132494848
+    m_Key: narrate_begin
+    m_Metadata:
+      m_Items: []
+  - m_Id: 256430771482624
+    m_Key: payment_screen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 258142592774144
+    m_Key: recording
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

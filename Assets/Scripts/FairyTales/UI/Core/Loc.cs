@@ -1,10 +1,30 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace FairyTales.UI.Core
 {
     public static class Loc
     {
+        private static readonly Dictionary<string, string> ToLocaleCode = new()
+        {
+            ["ru"] = "ru-RU",
+            ["kz"] = "kk-KZ",
+            ["en"] = "en",
+            ["uz"] = "uz"
+        };
+
+        private static readonly Dictionary<string, string> FromLocaleCode = new()
+        {
+            ["ru-RU"] = "ru",
+            ["ru"] = "ru",
+            ["kk-KZ"] = "kz",
+            ["kk"] = "kz",
+            ["en"] = "en",
+            ["uz"] = "uz"
+        };
         private static readonly Dictionary<string, Dictionary<string, string>> Strings = new()
         {
             ["no_narration"] = new() { ["ru"] = "Нет озвучки. Нажмите «Озвучить»", ["kz"] = "Дыбыстау жоқ. «Озвучить» басыңыз", ["en"] = "No narration. Tap \"Narrate\"" },
@@ -62,7 +82,12 @@ namespace FairyTales.UI.Core
         public static string Lang
         {
             get => PlayerPrefs.GetString("ft_lang", "ru");
-            set => PlayerPrefs.SetString("ft_lang", value);
+            set
+            {
+                PlayerPrefs.SetString("ft_lang", value);
+                PlayerPrefs.Save();
+                ApplyLocale(value);
+            }
         }
 
         public static string Get(string key)
@@ -71,6 +96,41 @@ namespace FairyTales.UI.Core
             if (translations.TryGetValue(Lang, out var text)) return text;
             if (translations.TryGetValue("ru", out var fallback)) return fallback;
             return key;
+        }
+
+        /// <summary>
+        /// Detect device language and return matching app lang code.
+        /// </summary>
+        public static string DetectSystemLang()
+        {
+            return Application.systemLanguage switch
+            {
+                SystemLanguage.Russian => "ru",
+                SystemLanguage.English => "en",
+                _ => "ru"
+            };
+        }
+
+        /// <summary>
+        /// Set Unity Localization SelectedLocale to match our lang code.
+        /// </summary>
+        public static void ApplyLocale(string lang)
+        {
+            if (!LocalizationSettings.InitializationOperation.IsDone) return;
+            if (!ToLocaleCode.TryGetValue(lang, out var code)) code = "ru-RU";
+            var locale = LocalizationSettings.AvailableLocales.Locales
+                .FirstOrDefault(l => l.Identifier.Code == code);
+            if (locale != null)
+                LocalizationSettings.SelectedLocale = locale;
+        }
+
+        /// <summary>
+        /// Convert Unity Locale code (e.g. "ru-RU") to our short code ("ru").
+        /// </summary>
+        public static string FromLocale(Locale locale)
+        {
+            if (locale == null) return "ru";
+            return FromLocaleCode.TryGetValue(locale.Identifier.Code, out var lang) ? lang : "ru";
         }
     }
 }

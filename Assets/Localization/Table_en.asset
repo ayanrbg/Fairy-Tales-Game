@@ -16,8 +16,124 @@ MonoBehaviour:
     m_Code: en
   m_SharedData: {fileID: 11400000, guid: e5e802c0d2b080e4d921feed091eb68f, type: 2}
   m_Metadata:
-    m_Items: []
-  m_TableData: []
+    m_Items:
+    - rid: 5825515506328928256
+  m_TableData:
+  - m_Id: 42278228537344
+    m_Localized: '{value} per month'
+    m_Metadata:
+      m_Items:
+      - rid: 5825515506328928256
+  - m_Id: 41117467488256
+    m_Localized: Choose language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41219682676736
+    m_Localized: Continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41269360013312
+    m_Localized: Who will be the hero of the stories?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41359734681600
+    m_Localized: Boy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41379049451520
+    m_Localized: Girl
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41406610223104
+    m_Localized: Child name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41470569164800
+    m_Localized: Preparing library
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41651758903296
+    m_Localized: Personalizing text...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41728770519040
+    m_Localized: Loading story
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41797116702720
+    m_Localized: Unlock all books
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41870852567040
+    m_Localized: Read
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41910010589184
+    m_Localized: Voice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41935625203712
+    m_Localized: Listen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41997755428864
+    m_Localized: Try 3 days free
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42080202862592
+    m_Localized: Terms of use
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42146384785408
+    m_Localized: Restore purchases
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42204375232512
+    m_Localized: Privacy policy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42375049850880
+    m_Localized: '{value} per year'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42420583215104
+    m_Localized: Voice the book
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42479991336960
+    m_Localized: New recording
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42528615903232
+    m_Localized: Narrator name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42571360055296
+    m_Localized: Drafts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42594013491200
+    m_Localized: Start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42617132494848
+    m_Localized: Recording in progress...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 256430771482624
+    m_Localized: Get access to all stories!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 258142592774144
+    m_Localized: Recording in progress...
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 5825515506328928256
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 42278228537344

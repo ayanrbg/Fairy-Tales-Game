@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 
 namespace FairyTales.UI.Core
@@ -46,6 +48,14 @@ namespace FairyTales.UI.Core
 
             if (start != null) start.ShowImmediate();
             _current = start;
+
+            StartCoroutine(ApplyLocaleOnReady());
+        }
+
+        private IEnumerator ApplyLocaleOnReady()
+        {
+            yield return LocalizationSettings.InitializationOperation;
+            Loc.ApplyLocale(Loc.Lang);
         }
 
         public void Show<T>() where T : BaseScreen
