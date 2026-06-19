@@ -10,6 +10,7 @@ namespace FairyTales.Audio
     {
         private AudioSource _source;
         private Coroutine _playRoutine;
+        private UnityWebRequest _activeRequest;
 
         public bool IsPlaying => _source != null && _source.isPlaying;
         public float Progress => _source != null && _source.clip != null
@@ -49,28 +50,58 @@ namespace FairyTales.Audio
             }
             _source.Stop();
             _source.clip = null;
+            DisposeRequest();
+        }
+
+        private void DisposeRequest()
+        {
+            if (_activeRequest != null)
+            {
+                _activeRequest.Dispose();
+                _activeRequest = null;
+            }
         }
 
         private IEnumerator LoadAndPlay(byte[] data)
         {
+            if (data == null || data.Length == 0) yield break;
+
             var (ext, audioType) = DetectFormat(data);
             var path = Path.Combine(Application.temporaryCachePath, $"narration.{ext}");
             File.WriteAllBytes(path, data);
 
             var uri = "file:///" + path.Replace("\\", "/");
-            using var request = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
-            yield return request.SendWebRequest();
 
-            if (request.result != UnityWebRequest.Result.Success)
+            DisposeRequest();
+            _activeRequest = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
+            // Enable streaming so playback starts before full decode finishes
+            ((DownloadHandlerAudioClip)_activeRequest.downloadHandler).streamAudio = true;
+            yield return _activeRequest.SendWebRequest();
+
+            if (_activeRequest.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError($"[NarrationPlayer] {request.error}");
+                DisposeRequest();
                 yield break;
             }
 
-            var clip = DownloadHandlerAudioClip.GetContent(request);
+            var clip = DownloadHandlerAudioClip.GetContent(_activeRequest);
+            if (clip == null || clip.length < 0.01f)
+            {
+                DisposeRequest();
+                yield break;
+            }
+
             _source.clip = clip;
             _source.Play();
+
+            if (!_source.isPlaying)
+            {
+                DisposeRequest();
+                yield break;
+            }
+
             yield return WaitForEnd();
+            DisposeRequest();
         }
 
         private static (string ext, AudioType type) DetectFormat(byte[] data)

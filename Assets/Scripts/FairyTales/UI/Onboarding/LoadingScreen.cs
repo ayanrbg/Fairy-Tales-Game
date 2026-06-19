@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -13,6 +14,8 @@ namespace FairyTales.UI.Onboarding
 {
     public class LoadingScreen : BaseScreen
     {
+        [SerializeField] private Image background;
+        [SerializeField] private float bgFadeDuration = 0.5f;
         [SerializeField] private Slider progressBar;
         [SerializeField] private TMP_Text statusText;
 
@@ -25,7 +28,11 @@ namespace FairyTales.UI.Onboarding
 
         private void Awake()
         {
+            Application.targetFrameRate = 60;
+
             _screens = GetComponentInParent<ScreenManager>();
+
+            if (background) SetBgAlpha(0f);
             _api = FindAnyObjectByType<ApiClient>();
             _auth = new AuthService(_api);
             _tales = new TalesService(_api);
@@ -33,12 +40,25 @@ namespace FairyTales.UI.Onboarding
 
         protected override void OnPrepare()
         {
-            SetProgress(0f, "Подготавливаем библиотеку...");
+            SetProgress(0f, Loc.Get("preparing_library"));
         }
 
         protected override void OnShown()
         {
+            if (background) background.DOFade(1f, bgFadeDuration).SetEase(Ease.OutQuad);
             StartCoroutine(RunOnboarding());
+        }
+
+        protected override void OnHidden()
+        {
+            if (background) SetBgAlpha(0f);
+        }
+
+        private void SetBgAlpha(float a)
+        {
+            var c = background.color;
+            c.a = a;
+            background.color = c;
         }
 
         private IEnumerator RunOnboarding()
@@ -48,51 +68,39 @@ namespace FairyTales.UI.Onboarding
             var gender = PlayerPrefs.GetString("ft_gender", "male");
             var userId = GetOrCreateUserId();
 
-            // Step 1 — Register
-            SetProgress(0.1f, "Создаём профиль...");
-            string error = null;
+            // Step 1 — Register (non-blocking)
+            SetProgress(0.1f, Loc.Get("loading"));
             yield return _auth.Register(userId, childName, gender, lang,
                 onSuccess: _ => { },
-                onError: e => error = e);
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[Loading] Register: {e}") */);
 
-            if (error != null)
-            {
-                Debug.LogError($"[Loading] Register failed: {error}");
-                SetProgress(0f, "Ошибка регистрации");
-                yield break;
-            }
-
-            // Step 2 — Fetch tales
-            SetProgress(0.3f, "Загружаем сказки...");
+            // Step 2 — Fetch tales (server → bundled fallback)
+            SetProgress(0.3f, Loc.Get("loading"));
             TaleSummary[] tales = null;
             yield return _tales.GetTales(lang,
                 onSuccess: t => tales = t,
-                onError: e => error = e);
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[Loading] Server: {e}") */);
 
-            if (error != null)
-            {
-                Debug.LogError($"[Loading] GetTales failed: {error}");
-                SetProgress(0.3f, "Ошибка загрузки");
-                yield break;
-            }
+            if (tales == null)
+                yield return BundledTaleLoader.LoadManifest(lang, t => tales = t);
 
-            // Step 3 — Personalize each tale
+            // Step 3 — Personalize non-bundled tales on server
             if (tales != null && tales.Length > 0)
             {
                 float step = 0.6f / tales.Length;
                 for (int i = 0; i < tales.Length; i++)
                 {
-                    SetProgress(0.3f + step * i,
-                        "Персонализируем текст...");
+                    SetProgress(0.3f + step * i, Loc.Get("loading"));
+
+                    if (BundledTaleLoader.IsBundled(tales[i].id)) continue;
 
                     yield return _tales.Personalize(tales[i].id, childName, gender,
                         onSuccess: _ => { },
-                        onError: e => Debug.LogWarning(
-                            $"[Loading] Personalize {tales[i].id}: {e}"));
+                        onError: e => { } /* RELEASE: Debug.LogWarning($"[Loading] Personalize {tales[i].id}: {e}") */);
                 }
             }
 
-            SetProgress(1f, "Готово!");
+            SetProgress(1f, Loc.Get("done_excl"));
             yield return new WaitForSeconds(0.3f);
 
             OnLoadingComplete?.Invoke();
@@ -104,11 +112,24 @@ namespace FairyTales.UI.Onboarding
             if (download != null && tales != null)
             {
                 download.SetTales(tales);
-                _screens.Show<DownloadScreen>();
+                FadeOutAndNavigate(() => _screens.Show<DownloadScreen>());
             }
             else
             {
-                _screens.Show<LibraryScreen>();
+                FadeOutAndNavigate(() => _screens.Show<LibraryScreen>());
+            }
+        }
+
+        private void FadeOutAndNavigate(Action navigate)
+        {
+            if (background)
+            {
+                background.DOFade(0f, bgFadeDuration).SetEase(Ease.InQuad)
+                    .OnComplete(() => navigate());
+            }
+            else
+            {
+                navigate();
             }
         }
 

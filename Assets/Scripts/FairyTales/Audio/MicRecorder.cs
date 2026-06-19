@@ -1,6 +1,10 @@
 using System;
+using System.Collections;
 using System.IO;
 using UnityEngine;
+#if UNITY_ANDROID
+using UnityEngine.Android;
+#endif
 
 namespace FairyTales.Audio
 {
@@ -23,12 +27,54 @@ namespace FairyTales.Audio
         {
             if (IsRecording) return;
 
-            _device = Microphone.devices.Length > 0 ? Microphone.devices[0] : null;
-            if (_device == null)
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
             {
-                Debug.LogError("[MicRecorder] No microphone found");
+                StartCoroutine(RequestAndroidPermissionAndRecord());
                 return;
             }
+#elif UNITY_IOS && !UNITY_EDITOR
+            if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
+            {
+                StartCoroutine(RequestIOSPermissionAndRecord());
+                return;
+            }
+#endif
+
+            BeginRecording();
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        private IEnumerator RequestAndroidPermissionAndRecord()
+        {
+            var callbacks = new PermissionCallbacks();
+            bool granted = false;
+            bool done = false;
+            callbacks.PermissionGranted += _ => { granted = true; done = true; };
+            callbacks.PermissionDenied += _ => done = true;
+            callbacks.PermissionDeniedAndDontAskAgain += _ => done = true;
+
+            Permission.RequestUserPermission(Permission.Microphone, callbacks);
+            yield return new WaitUntil(() => done);
+
+            if (granted) BeginRecording();
+        }
+#endif
+
+#if UNITY_IOS && !UNITY_EDITOR
+        private IEnumerator RequestIOSPermissionAndRecord()
+        {
+            yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
+
+            if (Application.HasUserAuthorization(UserAuthorization.Microphone))
+                BeginRecording();
+        }
+#endif
+
+        private void BeginRecording()
+        {
+            _device = Microphone.devices.Length > 0 ? Microphone.devices[0] : null;
+            if (_device == null) return;
 
             _clip = Microphone.Start(_device, false, maxDuration, sampleRate);
             _startTime = Time.time;

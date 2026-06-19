@@ -2,7 +2,6 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using FairyTales.Api;
 using FairyTales.Audio;
@@ -66,7 +65,7 @@ namespace FairyTales.Editor
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<EventSystem>();
-                es.AddComponent<InputSystemUIInputModule>();
+                es.AddComponent<StandaloneInputModule>();
                 Undo.RegisterCreatedObjectUndo(es, "Create EventSystem");
             }
 

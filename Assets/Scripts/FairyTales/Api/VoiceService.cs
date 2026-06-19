@@ -70,6 +70,16 @@ namespace FairyTales.Api
             );
         }
 
+        public IEnumerator UpdateDraft(int draftId, string voiceId,
+            Action onSuccess = null, Action<string> onError = null)
+        {
+            var body = JsonUtility.ToJson(new DraftUpdateRequest { voiceId = voiceId });
+            yield return _api.PutJson($"/api/voice/drafts/{draftId}", body,
+                _ => onSuccess?.Invoke(),
+                onError
+            );
+        }
+
         public IEnumerator GetDraft(int draftId,
             Action<Draft> onSuccess, Action<string> onError = null)
         {

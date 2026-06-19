@@ -1,3 +1,4 @@
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,6 +21,8 @@ namespace FairyTales.UI.Reading
 
         private PageNavigator _navigator;
         private TocThumbnail[] _pool;
+        private int[] _genderedPages;
+        private string _gender;
 
         private void Awake()
         {
@@ -41,6 +44,8 @@ namespace FairyTales.UI.Reading
         public void Show(TaleDetail tale, PageNavigator navigator)
         {
             _navigator = navigator;
+            _genderedPages = tale.genderedPages;
+            _gender = PlayerPrefs.GetString("ft_gender", "male");
             if (titleText) titleText.text = tale.title;
 
             gameObject.SetActive(true);
@@ -57,11 +62,41 @@ namespace FairyTales.UI.Reading
                 .OnComplete(() => gameObject.SetActive(false));
         }
 
+        /// <summary>
+        /// Warm the illustration cache for the TOC chapter thumbnails ahead of time
+        /// (e.g. when the reading screen opens) so the popup shows images immediately
+        /// instead of blank cards while sprites load/download.
+        /// </summary>
+        public IEnumerator Prewarm(TaleDetail tale)
+        {
+            if (tale == null) yield break;
+            _genderedPages = tale.genderedPages;
+            _gender = PlayerPrefs.GetString("ft_gender", "male");
+
+            int chapters = ChapterLayout(tale.totalPages, out int pagesPerChapter);
+            for (int i = 0; i < chapters; i++)
+            {
+                int startPage = i * pagesPerChapter;
+                yield return LoadThumbnail(tale.id, startPage, null);
+            }
+        }
+
+        /// <summary>
+        /// Number of chapter cards and pages per chapter. Re-derives the real chapter
+        /// count: ceil-rounding pagesPerChapter can leave trailing chapters whose
+        /// startPage is past the last page (phantom "51-49" cards).
+        /// </summary>
+        private int ChapterLayout(int total, out int pagesPerChapter)
+        {
+            int chapters = Mathf.Min(maxChapters, total);
+            pagesPerChapter = Mathf.CeilToInt((float)total / chapters);
+            return Mathf.CeilToInt((float)total / pagesPerChapter);
+        }
+
         private void Bind(TaleDetail tale, int currentPage)
         {
             int total = tale.totalPages;
-            int chapters = Mathf.Min(maxChapters, total);
-            int pagesPerChapter = Mathf.CeilToInt((float)total / chapters);
+            int chapters = ChapterLayout(total, out int pagesPerChapter);
 
             for (int i = 0; i < _pool.Length; i++)
             {
@@ -76,8 +111,11 @@ namespace FairyTales.UI.Reading
                 int endPage = Mathf.Min(startPage + pagesPerChapter - 1, total - 1);
                 bool selected = currentPage >= startPage && currentPage <= endPage;
 
-                var sprite = IllustrationProvider.GetThumbnail(tale.id, startPage);
-                if (thumb.Cover) thumb.Cover.sprite = sprite;
+                if (thumb.Cover)
+                {
+                    thumb.Cover.sprite = null;
+                    StartCoroutine(LoadThumbnail(tale.id, startPage, thumb.Cover));
+                }
                 if (thumb.Label) thumb.Label.text = $"{startPage + 1}-{endPage + 1}";
                 if (thumb.Border) thumb.Border.color =
                     selected ? SelectedBorder : NormalBorder;
@@ -95,6 +133,14 @@ namespace FairyTales.UI.Reading
 
                 thumb.gameObject.SetActive(true);
             }
+        }
+
+        private IEnumerator LoadThumbnail(string taleId, int page, Image target)
+        {
+            yield return IllustrationProvider.GetPageAsync(taleId, page, sprite =>
+            {
+                if (target) target.sprite = sprite;
+            }, _gender, _genderedPages);
         }
     }
 }

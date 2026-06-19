@@ -6,6 +6,7 @@ using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using System.Collections.Generic;
 
 namespace FairyTales.UI.Narration
 {
@@ -20,12 +21,36 @@ namespace FairyTales.UI.Narration
         [SerializeField] private Button btnSend;
         [SerializeField] private Button btnBack;
 
-        private static readonly string[] Samples = new[]
+        private static readonly Dictionary<string, string[]> SamplesByLang = new()
         {
-            "Жили-были дедушка да бабушка. Была у них внучка, которая очень любила сказки.",
-            "Однажды солнечным утром они отправились в волшебный лес за грибами и ягодами.",
-            "В лесу они встретили маленького зайчика, который заблудился и искал свою маму.",
-            "Все вместе они нашли дорогу домой и с тех пор стали лучшими друзьями."
+            ["ru"] = new[]
+            {
+                "Жили-были дедушка да бабушка. Была у них внучка, которая очень любила сказки.",
+                "Однажды солнечным утром они отправились в волшебный лес за грибами и ягодами.",
+                "В лесу они встретили маленького зайчика, который заблудился и искал свою маму.",
+                "Все вместе они нашли дорогу домой и с тех пор стали лучшими друзьями."
+            },
+            ["kz"] = new[]
+            {
+                "Баяғыда бір ата мен әже болыпты. Оларда ертегіні өте жақсы көретін немересі бар екен.",
+                "Бір күні ашық күнде олар сиқырлы орманға саңырауқұлақ пен жидек теруге барыпты.",
+                "Орманда олар жолын жоғалтып, анасын іздеп жүрген кішкентай қоянды кездестірді.",
+                "Бәрі бірге үйге жол тауып, сол күннен бастап ең жақсы достар болды."
+            },
+            ["en"] = new[]
+            {
+                "Once upon a time there lived a grandfather and a grandmother. They had a granddaughter who loved fairy tales.",
+                "One sunny morning they set off into the magical forest to pick mushrooms and berries.",
+                "In the forest they met a little bunny who was lost and looking for his mother.",
+                "Together they found the way home and from that day on they became the best of friends."
+            },
+            ["uz"] = new[]
+            {
+                "Qadim zamonda bir bobo va buvi yashar edi. Ularning ertaklarni juda yaxshi ko'radigan nevarasi bor edi.",
+                "Bir kuni quyoshli tongda ular sehrli o'rmonga qo'ziqorin va mevalar terishga jo'nashdi.",
+                "O'rmonda ular yo'lini yo'qotgan va onasini qidirayotgan kichkina quyonchani uchratishdi.",
+                "Hammasi birgalikda uyga yo'l topishdi va o'sha kundan boshlab eng yaqin do'stlarga aylandi."
+            }
         };
 
         private ScreenManager _screens;
@@ -63,11 +88,15 @@ namespace FairyTales.UI.Narration
             _player = FindAnyObjectByType<NarrationPlayer>();
 
             if (sampleText)
-                sampleText.text = string.Join("\n\n", Samples);
+            {
+                var lang = Loc.Lang;
+                var samples = SamplesByLang.ContainsKey(lang) ? SamplesByLang[lang] : SamplesByLang["ru"];
+                sampleText.text = string.Join("\n\n", samples);
+            }
 
             UpdateButtons();
             if (timerText) timerText.text = "00:00";
-            if (statusText) statusText.text = "Нажмите запись и прочитайте текст вслух";
+            if (statusText) statusText.text = Loc.Get("rec_hint");
         }
 
         private void Update()
@@ -95,7 +124,7 @@ namespace FairyTales.UI.Narration
                 _mic.OnStopped -= OnRecordingStopped;
                 _mic.OnStopped += OnRecordingStopped;
                 _mic.StartRecording();
-                if (statusText) statusText.text = "Запись...";
+                if (statusText) statusText.text = Loc.Get("rec_recording");
                 UpdateButtons();
             }
         }
@@ -107,8 +136,8 @@ namespace FairyTales.UI.Narration
 
             if (statusText)
                 statusText.text = wavData != null
-                    ? "Запись завершена. Прослушайте или отправьте."
-                    : "Ошибка записи. Попробуйте ещё раз.";
+                    ? Loc.Get("rec_done_detail")
+                    : Loc.Get("rec_error_detail");
 
             UpdateButtons();
         }
@@ -127,7 +156,7 @@ namespace FairyTales.UI.Narration
 
         private IEnumerator CloneAndNarrate()
         {
-            if (statusText) statusText.text = "Клонирование голоса...";
+            if (statusText) statusText.text = Loc.Get("rec_cloning");
             SetInteractable(false);
 
             string voiceId = null;
@@ -135,8 +164,8 @@ namespace FairyTales.UI.Narration
                 onSuccess: r => voiceId = r.voiceId,
                 onError: e =>
                 {
-                    Debug.LogError($"[VoiceRecording] Clone: {e}");
-                    if (statusText) statusText.text = $"Ошибка: {e}";
+                    // RELEASE: Debug.LogError($"[VoiceRecording] Clone: {e}");
+                    if (statusText) statusText.text = Loc.Format("error_with_msg", e);
                 });
 
             if (voiceId == null)
@@ -148,7 +177,7 @@ namespace FairyTales.UI.Narration
             PlayerPrefs.SetInt("ft_voiceCloned", 1);
             PlayerPrefs.Save();
 
-            if (statusText) statusText.text = "Запуск озвучки...";
+            if (statusText) statusText.text = Loc.Get("rec_narrating");
 
             var childName = PlayerPrefs.GetString("ft_childName", "");
             var gender = PlayerPrefs.GetString("ft_gender", "male");
@@ -163,8 +192,8 @@ namespace FairyTales.UI.Narration
                 },
                 onError: e =>
                 {
-                    Debug.LogError($"[VoiceRecording] NarrateAll: {e}");
-                    if (statusText) statusText.text = $"Ошибка: {e}";
+                    // RELEASE: Debug.LogError($"[VoiceRecording] NarrateAll: {e}");
+                    if (statusText) statusText.text = Loc.Format("error_with_msg", e);
                     SetInteractable(true);
                 });
         }

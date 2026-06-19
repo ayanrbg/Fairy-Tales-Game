@@ -15,12 +15,14 @@ namespace FairyTales.UI.Core
 
         public void OnPointerDown(PointerEventData eventData)
         {
+            transform.DOKill();
             transform.DOScale(_originalScale * pressScale, duration)
                 .SetEase(Ease.OutQuad);
         }
 
         public void OnPointerUp(PointerEventData eventData)
         {
+            transform.DOKill();
             transform.DOScale(_originalScale, duration)
                 .SetEase(Ease.OutBack);
         }

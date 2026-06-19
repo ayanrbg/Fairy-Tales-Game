@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using DG.Tweening;
 using FairyTales.Api;
 using FairyTales.Audio;
 using FairyTales.Cache;
@@ -14,6 +15,8 @@ namespace FairyTales.UI.Onboarding
 {
     public class PersonalizationScreen : BaseScreen
     {
+        [SerializeField] private Image background;
+        [SerializeField] private float bgFadeDuration = 0.5f;
         [SerializeField] private BackgroundMusicManager backgroundMusicManager;
         [SerializeField] private TMP_InputField nameInput;
         [SerializeField] private Button btnBoy;
@@ -42,6 +45,8 @@ namespace FairyTales.UI.Onboarding
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
+
+            if (background) SetBgAlpha(0f);
             var api = FindAnyObjectByType<ApiClient>();
             _auth = new AuthService(api);
             _tales = new TalesService(api);
@@ -51,11 +56,27 @@ namespace FairyTales.UI.Onboarding
             btnContinue.onClick.AddListener(OnContinue);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
             if (btnChangeLang)
-                btnChangeLang.onClick.AddListener(() =>
-                    _screens.Show<LanguageSelectScreen>());
+                btnChangeLang.onClick.AddListener(OnChangeLang);
             backgroundMusicManager = FindObjectOfType<BackgroundMusicManager>();
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
+        }
+
+        protected override void OnShown()
+        {
+            if (background) background.DOFade(1f, bgFadeDuration).SetEase(Ease.OutQuad);
+        }
+
+        protected override void OnHidden()
+        {
+            if (background) SetBgAlpha(0f);
+        }
+
+        private void SetBgAlpha(float a)
+        {
+            var c = background.color;
+            c.a = a;
+            background.color = c;
         }
 
         protected override void OnPrepare()
@@ -65,6 +86,19 @@ namespace FairyTales.UI.Onboarding
             nameInput.text = PlayerPrefs.GetString("ft_childName", "");
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
+        }
+
+        private void OnChangeLang()
+        {
+            if (background)
+            {
+                background.DOFade(0f, bgFadeDuration).SetEase(Ease.InQuad)
+                    .OnComplete(() => _screens.Show<LanguageSelectScreen>());
+            }
+            else
+            {
+                _screens.Show<LanguageSelectScreen>();
+            }
         }
 
         private void SelectGender(string gender)
@@ -79,7 +113,7 @@ namespace FairyTales.UI.Onboarding
             var childName = nameInput.text.Trim();
             if (string.IsNullOrEmpty(childName))
             {
-                Debug.LogWarning("[Personalization] Name is empty");
+                // RELEASE: Debug.LogWarning("[Personalization] Name is empty");
                 return;
             }
 
@@ -99,13 +133,16 @@ namespace FairyTales.UI.Onboarding
             // Register / login
             yield return _auth.Register(userId, childName, _gender, lang,
                 onSuccess: _ => { },
-                onError: e => Debug.LogWarning($"[Personalization] Register: {e}"));
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[Personalization] Register: {e}") */);
 
             // Load tale list
             TaleSummary[] tales = null;
             yield return _tales.GetTales(lang,
                 onSuccess: t => tales = t,
-                onError: e => Debug.LogError($"[Personalization] Tales: {e}"));
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[Personalization] Server: {e}") */);
+
+            if (tales == null)
+                yield return BundledTaleLoader.LoadManifest(lang, t => tales = t);
 
             btnContinue.interactable = true;
 
@@ -115,12 +152,26 @@ namespace FairyTales.UI.Onboarding
                 if (download != null)
                 {
                     download.SetTales(tales);
-                    _screens.Show<DownloadScreen>();
+                    FadeOutAndNavigate(() => _screens.Show<DownloadScreen>());
                     yield break;
                 }
             }
 
-            _screens.Show<LibraryScreen>();
+            _screens.Get<LibraryScreen>()?.MarkNeedsRefresh();
+            FadeOutAndNavigate(() => _screens.Show<LibraryScreen>());
+        }
+
+        private void FadeOutAndNavigate(Action navigate)
+        {
+            if (background)
+            {
+                background.DOFade(0f, bgFadeDuration).SetEase(Ease.InQuad)
+                    .OnComplete(() => navigate());
+            }
+            else
+            {
+                navigate();
+            }
         }
 
         private bool HasMissingCovers(TaleSummary[] tales)

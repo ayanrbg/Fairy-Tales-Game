@@ -1,3 +1,4 @@
+using DG.Tweening;
 using FairyTales.Audio;
 using FairyTales.UI.Core;
 using UnityEngine;
@@ -8,10 +9,13 @@ namespace FairyTales.UI.Onboarding
 {
     public class LanguageSelectScreen : BaseScreen
     {
+        [SerializeField] private Image background;
+        [SerializeField] private float bgFadeDuration = 0.5f;
         [SerializeField] private BackgroundMusicManager backgroundMusicManager;
         [SerializeField] private Button btnRussian;
         [SerializeField] private Button btnKazakh;
         [SerializeField] private Button btnEnglish;
+        [SerializeField] private Button btnUzbek;
         [SerializeField] private Button btnContinue;
         [SerializeField] private Button btnMusic;
 
@@ -19,6 +23,7 @@ namespace FairyTales.UI.Onboarding
         [SerializeField] private GameObject selectedRu;
         [SerializeField] private GameObject selectedKz;
         [SerializeField] private GameObject selectedEn;
+        [SerializeField] private GameObject selectedUz;
         [SerializeField] private GameObject selectionBtnMusicOff;
         [SerializeField] private GameObject selectionBtnMusicOn;
 
@@ -29,9 +34,11 @@ namespace FairyTales.UI.Onboarding
         {
             _screens = GetComponentInParent<ScreenManager>();
 
+            if (background) SetBgAlpha(0f);
             btnRussian.onClick.AddListener(() => SelectLang("ru"));
             btnKazakh.onClick.AddListener(() => SelectLang("kz"));
-            btnEnglish.onClick.AddListener(() => SelectLang("en"));
+            if (btnEnglish) btnEnglish.onClick.AddListener(() => SelectLang("en"));
+            if (btnUzbek) btnUzbek.onClick.AddListener(() => SelectLang("uz"));
             btnContinue.onClick.AddListener(OnContinue);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
             backgroundMusicManager = FindObjectOfType<BackgroundMusicManager>();
@@ -56,19 +63,45 @@ namespace FairyTales.UI.Onboarding
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
+        protected override void OnShown()
+        {
+            if (background) background.DOFade(1f, bgFadeDuration).SetEase(Ease.OutQuad);
+        }
+
+        protected override void OnHidden()
+        {
+            if (background) SetBgAlpha(0f);
+        }
+
+        private void SetBgAlpha(float a)
+        {
+            var c = background.color;
+            c.a = a;
+            background.color = c;
+        }
+
         private void SelectLang(string lang)
         {
             _selectedLang = lang;
             if (selectedRu) selectedRu.SetActive(lang == "ru");
             if (selectedKz) selectedKz.SetActive(lang == "kz");
             if (selectedEn) selectedEn.SetActive(lang == "en");
+            if (selectedUz) selectedUz.SetActive(lang == "uz");
             Loc.ApplyLocale(lang);
         }
 
         private void OnContinue()
         {
             Loc.Lang = _selectedLang;
-            _screens.Show<PersonalizationScreen>();
+            if (background)
+            {
+                background.DOFade(0f, bgFadeDuration).SetEase(Ease.InQuad)
+                    .OnComplete(() => _screens.Show<PersonalizationScreen>());
+            }
+            else
+            {
+                _screens.Show<PersonalizationScreen>();
+            }
         }
 
         private void OnMusicToggle()

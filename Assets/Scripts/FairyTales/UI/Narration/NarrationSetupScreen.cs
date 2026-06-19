@@ -58,8 +58,17 @@ namespace FairyTales.UI.Narration
         {
             if (titleText) titleText.text = _tale?.title ?? "";
 
-            var cover = _tale != null ? CoverProvider.Get(_tale.id) : null;
-            if (coverImage && cover) coverImage.sprite = cover;
+            if (coverImage && _tale != null)
+            {
+                var cached = CoverProvider.GetCached(_tale.id);
+                if (cached != null)
+                    coverImage.sprite = cached;
+                else
+                    StartCoroutine(CoverProvider.GetAsync(_tale.id, s =>
+                    {
+                        if (s != null && coverImage) coverImage.sprite = s;
+                    }));
+            }
 
             ShowTab(true);
         }
@@ -91,7 +100,7 @@ namespace FairyTales.UI.Narration
                         CreateDraftItem(draft);
                     }
                 },
-                onError: e => Debug.LogWarning($"[NarrationSetup] Drafts: {e}"));
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[NarrationSetup] Drafts: {e}") */);
         }
 
         private void CreateDraftItem(Draft draft)
@@ -113,7 +122,7 @@ namespace FairyTales.UI.Narration
             var name = narratorNameInput != null ? narratorNameInput.text.Trim() : "";
             if (string.IsNullOrEmpty(name))
             {
-                Debug.LogWarning("[NarrationSetup] Narrator name is empty");
+                // RELEASE: Debug.LogWarning("[NarrationSetup] Narrator name is empty");
                 return;
             }
 
@@ -124,7 +133,7 @@ namespace FairyTales.UI.Narration
         {
             yield return _voice.CreateDraft(narratorName, _tale.id,
                 onSuccess: draft => OpenRecording(draft),
-                onError: e => Debug.LogError($"[NarrationSetup] {e}"));
+                onError: e => { } /* RELEASE: Debug.LogError($"[NarrationSetup] {e}") */);
         }
 
         private void OpenRecording(Draft draft)
@@ -134,7 +143,7 @@ namespace FairyTales.UI.Narration
             var reading = _screens.Get<ReadingScreen>();
             if (reading == null) return;
 
-            reading.SetRecordingMode(_detail, _tale);
+            reading.SetRecordingMode(_detail, _tale, draft);
             _screens.Show<ReadingScreen>();
         }
 

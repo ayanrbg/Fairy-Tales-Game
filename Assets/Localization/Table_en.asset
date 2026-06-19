@@ -85,7 +85,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 42146384785408
-    m_Localized: Restore purchases
+    m_Localized: <u>Restore purchases</u>
     m_Metadata:
       m_Items: []
   - m_Id: 42204375232512
@@ -126,6 +126,79 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 258142592774144
     m_Localized: Recording in progress...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 261887204470784
+    m_Localized: Solve the example
+    m_Metadata:
+      m_Items: []
+  - m_Id: 262080117288960
+    m_Localized: Secret code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261826526261248
+    m_Localized: Instructive stories
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261898911559680
+    m_Localized: A new story every month
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261951134838784
+    m_Localized: 3 days free, then
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10851152128847872
+    m_Localized: Content
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10854463418609664
+    m_Localized: Text size
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11957772317569024
+    m_Localized: Choose the narrator's voice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11957940530130944
+    m_Localized: Male narrator
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11958034037944320
+    m_Localized: Female narrator
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11958115315167232
+    m_Localized: Parent's voice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11964739819876352
+    m_Localized: <s>{value} per year</s>
+    m_Metadata:
+      m_Items: []
+  - m_Id: 13396056365281280
+    m_Localized: Fast voice-over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 13396145565544448
+    m_Localized: A parent can narrate a story in their own voice, so the child can
+      listen to it anytime, again and again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 14157788717199360
+    m_Localized: Voice saved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 14157874910146560
+    m_Localized: "Record your voice first \u2014 tap \"Narrate\""
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23537650883276800
+    m_Localized: Promo code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23537745271894016
+    m_Localized: Enter promo code
     m_Metadata:
       m_Items: []
   references:

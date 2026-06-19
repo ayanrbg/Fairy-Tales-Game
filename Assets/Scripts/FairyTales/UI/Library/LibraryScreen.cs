@@ -1,12 +1,15 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using FairyTales.Api;
 using FairyTales.Audio;
+using FairyTales.Cache;
 using FairyTales.Models;
 using FairyTales.UI.Core;
+using FairyTales.IAP;
 using FairyTales.UI.Onboarding;
 using FairyTales.UI.Payment;
 
@@ -24,31 +27,57 @@ namespace FairyTales.UI.Library
         [SerializeField] private GameObject selectionBtnMusicOn;
         [SerializeField] private BackgroundMusicManager backgroundMusicManager;
         
+        private readonly List<TaleCard> _cardPool = new();
+
         private ScreenManager _screens;
+        private ApiClient _api;
         private AuthService _auth;
         private TalesService _tales;
         private TaleSummary[] _loadedTales;
+        private string _loadedLang;
         private bool _registered;
         private void Awake()
         {
             _screens = GetComponentInParent<ScreenManager>();
-            var api = FindAnyObjectByType<ApiClient>();
-            _auth = new AuthService(api);
-            _tales = new TalesService(api);
+            _api = FindAnyObjectByType<ApiClient>();
+            _auth = new AuthService(_api);
+            _tales = new TalesService(_api);
 
             if (btnSettings) btnSettings.onClick.AddListener(OnSettings);
             if (btnMusic) btnMusic.onClick.AddListener(OnMusicToggle);
             if (btnUnlockAll) btnUnlockAll.onClick.AddListener(OnUnlockAll);
             if (btnEmail) btnEmail.onClick.AddListener(OnEmail);
-            
+
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
+
+            if (IAPManager.Instance != null)
+                IAPManager.Instance.OnSubscriptionChanged += OnSubscriptionChanged;
+        }
+
+        private void OnDestroy()
+        {
+            if (IAPManager.Instance != null)
+                IAPManager.Instance.OnSubscriptionChanged -= OnSubscriptionChanged;
         }
 
         protected override void OnPrepare()
         {
             selectionBtnMusicOff.SetActive(backgroundMusicManager.IsMuted);
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
+            UpdateUnlockButton();
+
+            // Invalidate cache if language changed since last load.
+            var currentLang = PlayerPrefs.GetString("ft_lang", "ru");
+            if (_loadedTales != null && _loadedLang != currentLang)
+                _loadedTales = null;
+
+            // If tales are already loaded, sort + rebuild the grid NOW, before the
+            // slide-in animation starts, so the user never sees cards reorder.
+            if (_loadedTales != null)
+                BuildGridImmediate();
+            else
+                RefreshCardStates();
         }
 
         protected override void OnShown()
@@ -70,13 +99,16 @@ namespace FairyTales.UI.Library
                     onError: e =>
                     {
                         // Already registered is fine
-                        Debug.LogWarning($"[Library] Register: {e}");
+                        // RELEASE: Debug.LogWarning($"[Library] Register: {e}");
                         _registered = true;
                     });
             }
 
-            // Always reload — name/gender may have changed via Settings
-            _loadedTales = null;
+            // Cached list was already sorted + rebuilt in OnPrepare (before the
+            // slide-in), so nothing more to do here.
+            if (_loadedTales != null)
+                yield break;
+
             yield return LoadTales();
         }
 
@@ -86,32 +118,118 @@ namespace FairyTales.UI.Library
 
             yield return _tales.GetTales(lang,
                 onSuccess: tales => _loadedTales = tales,
-                onError: e => Debug.LogError($"[Library] {e}"));
+                onError: e => { } /* RELEASE: Debug.LogWarning($"[Library] Server: {e}") */);
+
+            // Offline fallback: use bundled manifest
+            if (_loadedTales == null)
+            {
+                yield return BundledTaleLoader.LoadManifest(lang, tales => _loadedTales = tales);
+            }
 
             if (_loadedTales == null) yield break;
 
+            _loadedLang = lang;
             BuildGrid();
         }
 
         private void BuildGrid()
         {
-            foreach (Transform child in cardContainer)
-                Destroy(child.gameObject);
+            StartCoroutine(BuildGridStaggered());
+        }
 
+        /// <summary>Synchronous sort + populate. Use before a transition so the grid is
+        /// already in final order as the screen becomes visible (no visible reordering).</summary>
+        private void BuildGridImmediate()
+        {
             if (_loadedTales == null) return;
+
+            bool subscribed = IAPManager.Instance != null && IAPManager.Instance.IsSubscribed;
+            SortLoadedTales(subscribed);
+
+            for (int i = 0; i < _loadedTales.Length; i++)
+                InitCard(GetOrCreateCard(i), _loadedTales[i], subscribed);
+
+            for (int i = _loadedTales.Length; i < _cardPool.Count; i++)
+                _cardPool[i].gameObject.SetActive(false);
+
+            UpdateUnlockButton();
+        }
+
+        private IEnumerator BuildGridStaggered()
+        {
+            if (_loadedTales == null) yield break;
+
+            bool subscribed = IAPManager.Instance != null && IAPManager.Instance.IsSubscribed;
+            SortLoadedTales(subscribed);
 
             for (int i = 0; i < _loadedTales.Length; i++)
             {
-                var tale = _loadedTales[i];
-                var go = Instantiate(cardPrefab, cardContainer);
-                go.SetActive(true);
-                var card = go.GetComponent<TaleCard>();
-                card.Init(tale, false, OnCardClick);
+                InitCard(GetOrCreateCard(i), _loadedTales[i], subscribed);
+
+                if ((i + 1) % 4 == 0)
+                    yield return null;
             }
+
+            for (int i = _loadedTales.Length; i < _cardPool.Count; i++)
+                _cardPool[i].gameObject.SetActive(false);
+
+            UpdateUnlockButton();
         }
+
+        // Sort: accessible+downloaded → accessible+not-downloaded → locked
+        private void SortLoadedTales(bool subscribed)
+        {
+            Array.Sort(_loadedTales, (a, b) =>
+            {
+                int ga = SortGroup(a, subscribed);
+                int gb = SortGroup(b, subscribed);
+                return ga != gb ? ga.CompareTo(gb) : 0;
+            });
+        }
+
+        private TaleCard GetOrCreateCard(int i)
+        {
+            if (i < _cardPool.Count)
+            {
+                var pooled = _cardPool[i];
+                pooled.gameObject.SetActive(true);
+                return pooled;
+            }
+
+            var go = Instantiate(cardPrefab, cardContainer);
+            var card = go.GetComponent<TaleCard>();
+            _cardPool.Add(card);
+            return card;
+        }
+
+        private void InitCard(TaleCard card, TaleSummary tale, bool subscribed)
+        {
+            bool locked = !tale.free && !subscribed;
+            bool downloaded = AssetCache.IsTaleDownloaded(tale.id);
+            card.Init(tale, locked, downloaded, _api, OnCardClick);
+        }
+
+        // Sort order: downloaded → ready-to-download → locked → coming-soon (always last)
+        private static int SortGroup(TaleSummary tale, bool subscribed)
+        {
+            if (tale.comingSoon) return 3;
+            bool accessible = tale.free || subscribed;
+            if (!accessible) return 2;
+            return AssetCache.IsTaleDownloaded(tale.id) ? 0 : 1;
+        }
+
+        /// <summary>Call when name/gender changes to force reload on next show.</summary>
+        public void MarkNeedsRefresh() => _loadedTales = null;
 
         private void OnCardClick(TaleSummary tale)
         {
+            bool subscribed = IAPManager.Instance != null && IAPManager.Instance.IsSubscribed;
+            if (!tale.free && !subscribed)
+            {
+                PaymentScreen.Open(_screens); // gate first, then paywall (back to library)
+                return;
+            }
+
             var detail = _screens.Get<TaleDetailScreen>();
             if (detail == null) return;
 
@@ -126,7 +244,7 @@ namespace FairyTales.UI.Library
 
         private void OnUnlockAll()
         {
-            ChildGatePopup.Show(() => _screens.Show<PaymentScreen>());
+            PaymentScreen.Open(_screens);
         }
 
         private void OnEmail()
@@ -137,6 +255,25 @@ namespace FairyTales.UI.Library
                 var subject = Uri.EscapeDataString(Loc.Get("email_subject"));
                 Application.OpenURL($"mailto:{email}?subject={subject}");
             });
+        }
+
+        private void UpdateUnlockButton()
+        {
+            bool subscribed = IAPManager.Instance != null && IAPManager.Instance.IsSubscribed;
+            if (btnUnlockAll) btnUnlockAll.gameObject.SetActive(!subscribed);
+        }
+
+        private void RefreshCardStates()
+        {
+            foreach (var card in _cardPool)
+                if (card.gameObject.activeSelf)
+                    card.RefreshDownloadState();
+        }
+
+        private void OnSubscriptionChanged(bool subscribed)
+        {
+            UpdateUnlockButton();
+            BuildGrid();
         }
 
         private void OnMusicToggle()

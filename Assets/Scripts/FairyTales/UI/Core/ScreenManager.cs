@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using FairyTales.UI.Library;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
@@ -17,16 +18,19 @@ namespace FairyTales.UI.Core
         private readonly Dictionary<System.Type, BaseScreen> _screens = new();
         private BaseScreen _current;
         private bool _transitioning;
+        private float _transitionStart;
 
         private void Awake()
         {
             Cache.AssetCache.MigrateIfNeeded();
 
+            // Activate all screens once (WarmUp keeps GameObject active,
+            // disables Canvas.enabled) — avoids expensive SetActive rebuild later.
             var all = GetComponentsInChildren<BaseScreen>(true);
             foreach (var screen in all)
             {
                 _screens[screen.GetType()] = screen;
-                screen.HideImmediate();
+                screen.WarmUp();
             }
 
             if (sharedBackground != null)
@@ -40,16 +44,26 @@ namespace FairyTales.UI.Core
         {
             var start = initialScreen;
 
-            if (onboardedScreen != null &&
-                !string.IsNullOrEmpty(PlayerPrefs.GetString("ft_childName", "")))
+            if (!string.IsNullOrEmpty(PlayerPrefs.GetString("ft_childName", "")))
             {
-                start = onboardedScreen;
+                // Skip loading screen — LibraryScreen handles register + tales fetch
+                if (_screens.TryGetValue(typeof(LibraryScreen), out var lib))
+                    start = lib;
+                else if (onboardedScreen != null)
+                    start = onboardedScreen;
             }
 
             if (start != null) start.ShowImmediate();
             _current = start;
 
-            StartCoroutine(ApplyLocaleOnReady());
+            StartCoroutine(StartupRoutine());
+        }
+
+        private IEnumerator StartupRoutine()
+        {
+            // Build resource index after first frame so it doesn't block startup
+            yield return Cache.AssetCache.InitResourceIndexAsync();
+            yield return ApplyLocaleOnReady();
         }
 
         private IEnumerator ApplyLocaleOnReady()
@@ -60,11 +74,17 @@ namespace FairyTales.UI.Core
 
         public void Show<T>() where T : BaseScreen
         {
+            // Safety: reset stuck _transitioning flag after 3 seconds
+            if (_transitioning && Time.unscaledTime - _transitionStart > 3f)
+            {
+                Debug.LogWarning("[ScreenManager] _transitioning stuck — force-resetting");
+                _transitioning = false;
+            }
             if (_transitioning) return;
 
             if (!_screens.TryGetValue(typeof(T), out var next))
             {
-                Debug.LogError($"[ScreenManager] Screen not found: {typeof(T).Name}");
+                // RELEASE: Debug.LogError($"[ScreenManager] Screen not found: {typeof(T).Name}");
                 return;
             }
 
@@ -85,13 +105,40 @@ namespace FairyTales.UI.Core
             next.Show();
         }
 
+        public void Show(System.Type screenType)
+        {
+            if (_transitioning && Time.unscaledTime - _transitionStart > 3f)
+            {
+                Debug.LogWarning("[ScreenManager] _transitioning stuck — force-resetting");
+                _transitioning = false;
+            }
+            if (_transitioning) return;
+
+            if (!_screens.TryGetValue(screenType, out var next))
+                return;
+
+            if (next == _current) return;
+
+            var prev = _current;
+            _current = next;
+
+            if (prev != null && prev.SlideEnabled && next.SlideEnabled)
+            {
+                CoordinatedSlide(prev, next);
+                return;
+            }
+
+            if (prev != null) prev.Hide();
+            next.Show();
+        }
+
         private void CoordinatedSlide(BaseScreen prev, BaseScreen next)
         {
             _transitioning = true;
+            _transitionStart = Time.unscaledTime;
             var h = Screen.height;
             var duration = next.AnimDuration;
 
-            // prev at 0, next directly below
             prev.Rect.anchoredPosition = Vector2.zero;
             next.PrepareBelow();
 
@@ -102,6 +149,33 @@ namespace FairyTales.UI.Core
             {
                 prev.FinalizeHidden();
                 next.FinalizeShown();
+                _transitioning = false;
+            });
+        }
+
+        /// <summary>
+        /// Slide next screen in on top of current, then hide current instantly.
+        /// No overlap flicker — prev stays as background until next fully covers it.
+        /// </summary>
+        public void ShowOver<T>() where T : BaseScreen
+        {
+            if (_transitioning && Time.unscaledTime - _transitionStart > 3f)
+            {
+                Debug.LogWarning("[ScreenManager] _transitioning stuck (ShowOver) — force-resetting");
+                _transitioning = false;
+            }
+            if (_transitioning) return;
+            if (!_screens.TryGetValue(typeof(T), out var next)) return;
+            if (next == _current) return;
+
+            var prev = _current;
+            _current = next;
+            _transitioning = true;
+            _transitionStart = Time.unscaledTime;
+
+            next.Show(onComplete: () =>
+            {
+                prev?.HideImmediate();
                 _transitioning = false;
             });
         }

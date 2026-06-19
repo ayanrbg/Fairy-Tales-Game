@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using FairyTales.Api;
 using FairyTales.Models;
+using FairyTales.UI.Core;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -18,6 +19,7 @@ namespace FairyTales.Cache
 
         public IEnumerator DownloadCover(TaleSummary tale, Action<string> onError = null)
         {
+            if (BundledTaleLoader.IsBundled(tale.id)) yield break;
             if (AssetCache.IsCoverDownloaded(tale.id)) yield break;
 
             yield return DownloadImage(
@@ -35,14 +37,40 @@ namespace FairyTales.Cache
         {
             _bytesDownloaded = 0;
 
-            if (AssetCache.IsTaleDownloaded(tale.id))
+            if (BundledTaleLoader.IsBundled(tale.id))
             {
                 onProgress?.Invoke(1, 1);
                 yield break;
             }
 
             var id = tale.id;
-            var lang = tale.lang;
+            var lang = Loc.Lang;
+
+            // Text for ALL translations — cache each language's JSON so switching
+            // language later works offline and shows the correct translation. Runs
+            // even if illustrations are already downloaded, so "download tale" always
+            // tops up every language. Only cache a language the server actually served
+            // (d.lang == l): otherwise its default-language fallback would be saved
+            // under the wrong key and the tale would read in the wrong language offline.
+            foreach (var l in Loc.AllLangs)
+            {
+                if (AssetCache.Exists(AssetCache.TaleTextKey(id, l))) continue;
+                yield return _api.Get($"/api/tales/{id}?lang={l}",
+                    json =>
+                    {
+                        var d = JsonConvert.DeserializeObject<TaleDetail>(json);
+                        if (d != null && d.lang == l)
+                            AssetCache.Save(AssetCache.TaleTextKey(id, l),
+                                System.Text.Encoding.UTF8.GetBytes(json));
+                    },
+                    _ => { });
+            }
+
+            if (AssetCache.IsTaleDownloaded(id))
+            {
+                onProgress?.Invoke(1, 1);
+                yield break;
+            }
 
             TaleDetail detail = null;
             yield return _api.Get($"/api/tales/{id}?lang={lang}",
@@ -51,18 +79,44 @@ namespace FairyTales.Cache
 
             if (detail == null) yield break;
 
-            int totalSteps = detail.totalPages;
+            // Progress: plain pages = 1 download, gendered pages = 2 (boy + girl).
+            // (totalPages - g) + 2*g == totalPages + g, so the formula is unchanged.
+            int genderedCount = detail.genderedPages?.Length ?? 0;
+            int totalSteps = detail.totalPages + genderedCount;
             if (tale.hasDefaultNarration) totalSteps += detail.totalPages;
             int step = 0;
 
-            // Illustrations
+            // Illustrations — gender-agnostic: download BOTH variants for gendered
+            // pages so switching the child's gender later is handled purely on-client
+            // from cache. Gendered pages have no plain page_N on the server, so we
+            // request boy/girl directly instead.
             for (int p = 0; p < detail.totalPages; p++)
             {
-                yield return DownloadImage(
-                    $"/api/tales/{id}/illustration/{p}",
-                    AssetCache.IllustrationKey(id, p), onError,
-                    $"Illustrations/{id}/page_{p}");
-                onProgress?.Invoke(++step, totalSteps);
+                bool isGendered = detail.genderedPages != null
+                    && Array.IndexOf(detail.genderedPages, p) >= 0;
+
+                if (isGendered)
+                {
+                    yield return DownloadImage(
+                        $"/api/tales/{id}/illustration/{p}?gender=boy",
+                        AssetCache.IllustrationKey(id, p, "boy"), onError,
+                        $"Illustrations/{id}/page_{p}_boy");
+                    onProgress?.Invoke(++step, totalSteps);
+
+                    yield return DownloadImage(
+                        $"/api/tales/{id}/illustration/{p}?gender=girl",
+                        AssetCache.IllustrationKey(id, p, "girl"), onError,
+                        $"Illustrations/{id}/page_{p}_girl");
+                    onProgress?.Invoke(++step, totalSteps);
+                }
+                else
+                {
+                    yield return DownloadImage(
+                        $"/api/tales/{id}/illustration/{p}",
+                        AssetCache.IllustrationKey(id, p), onError,
+                        $"Illustrations/{id}/page_{p}");
+                    onProgress?.Invoke(++step, totalSteps);
+                }
             }
 
             // Default narration
@@ -89,7 +143,7 @@ namespace FairyTales.Cache
             DefaultNarrationInfo info = null;
             yield return _api.Get($"/api/tales/{taleId}/default-narration?lang={lang}",
                 json => info = JsonConvert.DeserializeObject<DefaultNarrationInfo>(json),
-                e => Debug.LogWarning($"[Download] narration info {taleId}: {e}"));
+                e => { } /* RELEASE: Debug.LogWarning($"[Download] narration info {taleId}: {e}") */);
 
             if (info == null || !info.available || info.pages == null || info.pages.Length == 0)
                 yield break;
@@ -121,7 +175,7 @@ namespace FairyTales.Cache
                 },
                 e =>
                 {
-                    Debug.LogWarning($"[Download] {endpoint}: {e}");
+                    // RELEASE: Debug.LogWarning($"[Download] {endpoint}: {e}");
                     onError?.Invoke(e);
                 });
         }
@@ -139,7 +193,7 @@ namespace FairyTales.Cache
                 },
                 e =>
                 {
-                    Debug.LogWarning($"[Download] {endpoint}: {e}");
+                    // RELEASE: Debug.LogWarning($"[Download] {endpoint}: {e}");
                     onError?.Invoke(e);
                 });
         }

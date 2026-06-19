@@ -27,6 +27,12 @@ namespace FairyTales.Models
     }
 
     [Serializable]
+    public class DraftUpdateRequest
+    {
+        public string voiceId;
+    }
+
+    [Serializable]
     public class DraftDeleteResponse
     {
         public string status;

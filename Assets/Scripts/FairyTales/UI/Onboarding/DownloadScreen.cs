@@ -111,8 +111,7 @@ namespace FairyTales.UI.Onboarding
                 (step, total) => UpdateProgress(step, total),
                 e => error = e);
 
-            if (error != null)
-                Debug.LogError($"[Download] Failed: {error}");
+            // RELEASE: if (error != null) Debug.LogError($"[Download] Failed: {error}");
 
             if (progressBar) progressBar.value = 1f;
             if (statusText) statusText.text = Loc.Get("download.done");

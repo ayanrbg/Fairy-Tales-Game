@@ -123,6 +123,96 @@ MonoBehaviour:
     m_Key: recording
     m_Metadata:
       m_Items: []
+  - m_Id: 261887204470784
+    m_Key: solve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 262080117288960
+    m_Key: secret_code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261826526261248
+    m_Key: payment_stories
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261898911559680
+    m_Key: payment_new_tale
+    m_Metadata:
+      m_Items: []
+  - m_Id: 8261951134838784
+    m_Key: pay_trial
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10851152128847872
+    m_Key: 'toc_text
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10854463418609664
+    m_Key: 'text_size
+
+
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11957772317569024
+    m_Key: 'choose_dict
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11957940530130944
+    m_Key: 'man_dict
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11958034037944320
+    m_Key: 'female_dict
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11958115315167232
+    m_Key: 'parent_dict
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 11964739819876352
+    m_Key: 'previous_discotun
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 13396056365281280
+    m_Key: fast_narrate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 13396145565544448
+    m_Key: 'narrate_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 14157788717199360
+    m_Key: voice_saved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 14157874910146560
+    m_Key: record_voice_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23537650883276800
+    m_Key: promo_code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23537745271894016
+    m_Key: promo_placeholder
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

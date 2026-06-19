@@ -4,17 +4,21 @@ using UnityEngine;
 
 namespace FairyTales.UI.Core
 {
-    [RequireComponent(typeof(CanvasGroup))]
+    [RequireComponent(typeof(CanvasGroup), typeof(Canvas))]
     public abstract class BaseScreen : MonoBehaviour
     {
         [SerializeField] private float animDuration = 0.4f;
         [SerializeField] protected bool slideFromBottom = true;
 
         private CanvasGroup _canvasGroup;
+        private Canvas _canvas;
         private RectTransform _rect;
 
         protected CanvasGroup CanvasGroup =>
             _canvasGroup ??= GetComponent<CanvasGroup>();
+
+        private Canvas Canvas =>
+            _canvas ??= GetComponent<Canvas>();
 
         public RectTransform Rect =>
             _rect ??= GetComponent<RectTransform>();
@@ -22,13 +26,26 @@ namespace FairyTales.UI.Core
         public bool SlideEnabled => slideFromBottom;
         public float AnimDuration => animDuration;
 
+        /// <summary>
+        /// Activate the GameObject once so coroutines work.
+        /// All further show/hide toggles Canvas.enabled (cheap, no rebuild).
+        /// </summary>
+        public void WarmUp()
+        {
+            gameObject.SetActive(true);
+            Canvas.enabled = false;
+            CanvasGroup.alpha = 0f;
+            CanvasGroup.interactable = true;
+            CanvasGroup.blocksRaycasts = false;
+        }
+
         /// <summary>Fade-in (+ slide up if enabled). Used for standalone transitions.</summary>
         public virtual void Show(Action onComplete = null)
         {
-            gameObject.SetActive(true);
+            Canvas.enabled = true;
             OnPrepare();
             CanvasGroup.alpha = 0f;
-            CanvasGroup.interactable = false;
+            CanvasGroup.blocksRaycasts = false;
 
             if (slideFromBottom)
                 Rect.anchoredPosition = new Vector2(0f, -Screen.height);
@@ -41,7 +58,6 @@ namespace FairyTales.UI.Core
 
             seq.OnComplete(() =>
             {
-                CanvasGroup.interactable = true;
                 CanvasGroup.blocksRaycasts = true;
                 OnShown();
                 onComplete?.Invoke();
@@ -51,7 +67,7 @@ namespace FairyTales.UI.Core
         /// <summary>Fade-out (+ slide up if enabled). Used for standalone transitions.</summary>
         public virtual void Hide(Action onComplete = null)
         {
-            CanvasGroup.interactable = false;
+            CanvasGroup.blocksRaycasts = false;
 
             var seq = DOTween.Sequence();
             seq.Append(CanvasGroup.DOFade(0f, animDuration).SetEase(Ease.InQuad));
@@ -61,8 +77,8 @@ namespace FairyTales.UI.Core
 
             seq.OnComplete(() =>
             {
-                CanvasGroup.blocksRaycasts = false;
-                gameObject.SetActive(false);
+                StopAllCoroutines();
+                Canvas.enabled = false;
                 Rect.anchoredPosition = Vector2.zero;
                 OnHidden();
                 onComplete?.Invoke();
@@ -72,20 +88,17 @@ namespace FairyTales.UI.Core
         /// <summary>Prepare screen before coordinated slide (activate, set alpha, position).</summary>
         public void PrepareBelow()
         {
-            gameObject.SetActive(true);
+            Canvas.enabled = true;
             OnPrepare();
             CanvasGroup.alpha = 1f;
-            CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
             Rect.anchoredPosition = new Vector2(0f, -Screen.height);
-            Canvas.ForceUpdateCanvases();
         }
 
         /// <summary>Finalize after coordinated slide-in completed.</summary>
         public void FinalizeShown()
         {
             Rect.anchoredPosition = Vector2.zero;
-            CanvasGroup.interactable = true;
             CanvasGroup.blocksRaycasts = true;
             OnShown();
         }
@@ -93,10 +106,10 @@ namespace FairyTales.UI.Core
         /// <summary>Finalize after coordinated slide-out completed.</summary>
         public void FinalizeHidden()
         {
+            StopAllCoroutines();
             CanvasGroup.alpha = 0f;
-            CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
-            gameObject.SetActive(false);
+            Canvas.enabled = false;
             Rect.anchoredPosition = Vector2.zero;
             OnHidden();
         }
@@ -104,6 +117,7 @@ namespace FairyTales.UI.Core
         public void ShowImmediate()
         {
             gameObject.SetActive(true);
+            Canvas.enabled = true;
             OnPrepare();
             Rect.anchoredPosition = Vector2.zero;
             CanvasGroup.alpha = 1f;
@@ -114,10 +128,10 @@ namespace FairyTales.UI.Core
 
         public void HideImmediate()
         {
+            StopAllCoroutines();
             CanvasGroup.alpha = 0f;
-            CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
-            gameObject.SetActive(false);
+            Canvas.enabled = false;
             Rect.anchoredPosition = Vector2.zero;
             OnHidden();
         }

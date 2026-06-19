@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace FairyTales.Models
 {
@@ -10,7 +11,22 @@ namespace FairyTales.Models
         public string lang;
         public string file;
         public bool hasDefaultNarration;
+        public bool free;
         public string coverUrl;
+        public bool bundled;
+        public long downloadSize;
+        public bool comingSoon;
+        public Dictionary<string, string> titles;
+
+        /// <summary>
+        /// Returns the title for the given language, falling back to <see cref="title"/>.
+        /// </summary>
+        public string GetTitle(string langCode)
+        {
+            if (titles != null && titles.TryGetValue(langCode, out var t))
+                return t;
+            return title;
+        }
     }
 
     [Serializable]
@@ -19,8 +35,36 @@ namespace FairyTales.Models
         public string id;
         public string title;
         public string lang;
+        public bool free;
         public int totalPages;
         public string[] pages;
+        public int[] genderedPages;
+        public bool bundled;
+        public long downloadSize;
+        public bool comingSoon;
+    }
+
+    [Serializable]
+    public class NarrateAllRequest
+    {
+        public string name;
+        public string gender;
+        public string voice; // null = user's cloned voice, "narrator" = Edge TTS
+    }
+
+    /// <summary>
+    /// Full payload for NarrateAll — supports sending pages for bundled tales.
+    /// Serialized via Newtonsoft (NullValueHandling.Ignore).
+    /// </summary>
+    [Serializable]
+    public class NarrateAllPayload
+    {
+        public string name;
+        public string gender;
+        public string voice;
+        public string narratorGender;
+        public string lang;
+        public string[] pages; // client pages for bundled tales
     }
 
     [Serializable]

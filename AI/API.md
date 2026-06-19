@@ -75,7 +75,7 @@ voiceSample: <аудио-файл.mp3>
 { "error": "Token not provided" }
 { "error": "Invalid or expired token" }
 
-// 502 — ошибка ElevenLabs API
+// 502 — ошибка Fish Audio API
 { "error": "Failed to clone voice", "details": "..." }
 ```
 
@@ -99,7 +99,7 @@ Authorization: Bearer <token>
 // 404 — голос не найден
 { "error": "No cloned voice found" }
 
-// 502 — ошибка ElevenLabs API
+// 502 — ошибка Fish Audio API
 { "error": "Failed to delete voice" }
 ```
 
@@ -126,14 +126,14 @@ Authorization: Bearer <token>
     "id": "kolobok",
     "title": "Колобок",
     "lang": "ru",
-    "hasDefaultNarration": true,
+    "free": false,
     "coverUrl": "/api/tales/kolobok/cover"
   },
   {
     "id": "teremok",
     "title": "Теремок",
     "lang": "ru",
-    "hasDefaultNarration": false,
+    "free": true,
     "coverUrl": "/api/tales/teremok/cover"
   }
 ]
@@ -143,11 +143,9 @@ Authorization: Bearer <token>
 |------|-----|----------|
 | `id` | string | ID сказки (одинаковый для всех языков) |
 | `title` | string | Название на языке версии |
-| `lang` | string | Код языка (`ru`, `en`, `kz`) |
-| `hasDefaultNarration` | boolean | Есть ли озвучка диктора для данного языка |
+| `lang` | string | Код языка (`ru`, `en`, `kz`, `uz`) |
+| `free` | boolean | Бесплатная ли сказка |
 | `coverUrl` | string | URL для загрузки обложки |
-
-> `hasDefaultNarration` проверяет наличие файлов в `data/narration/default/{id}/{lang}/`. Это избавляет клиент от N+1 запросов для каждой сказки.
 
 ---
 
@@ -177,33 +175,66 @@ Authorization: Bearer <token>
     "Старуха наскребла муки, замесила тесто на сметане, скатала колобок, изжарила в масле и положила на окошко остудить.",
     "Колобок полежал-полежал, да вдруг и покатился — с окна на лавку, с лавки на пол, по полу да к двери...",
     "Катится колобок по дороге, а навстречу ему заяц: «Колобок, колобок! Я тебя съем!»"
-  ]
+  ],
+  "genderedPages": [2, 5]
 }
 ```
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `genderedPages` | int[] | Номера страниц, для которых есть гендерные варианты иллюстраций (`page_N_boy` / `page_N_girl`). Пустой массив если вариантов нет. Клиент использует этот массив, чтобы знать для каких страниц добавлять `?gender=boy` или `?gender=girl` при запросе иллюстраций. |
 
 **Ошибка (404):**
 ```json
 { "error": "Tale not found" }
 ```
 
-> **Логика в приложении:** отображать `pages[currentIndex]` на экране, кнопки «назад/вперёд» переключают индекс от `0` до `totalPages - 1`.
+> **Логика в приложении:** отображать `pages[currentIndex]` на экране, кнопки «назад/вперёд» переключают индекс от `0` до `totalPages - 1`. Для иллюстраций: если номер страницы есть в `genderedPages`, добавлять `?gender=boy` или `?gender=girl` к запросу иллюстрации.
 
 ---
 
 ## 7. Озвучить страницу сказки
 
-Озвучивает **одну страницу** сказки. По умолчанию используется клонированный голос пользователя. С параметром `voice=narrator` — профессиональный дикторский голос.
+Озвучивает **одну страницу** сказки. По умолчанию используется клонированный голос пользователя (Fish Audio). С параметром `voice=narrator` — дефолтный дикторский голос (Edge TTS, бесплатно).
 
-**Запрос (голос пользователя):**
+Поддерживает два режима:
+- **Серверные сказки** — текст загружается из БД, требует `name` и `gender` для персонализации.
+- **Bundled-сказки** — клиент передаёт готовый текст в поле `text` тела запроса (уже персонализированный). Загрузка из БД и персонализация не выполняются.
+
+**Запрос (серверная сказка, голос пользователя):**
 ```
 POST /api/tales/kolobok/narrate?page=0
 Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Маша",
+  "gender": "female"
+}
 ```
 
-**Запрос (дикторская озвучка):**
+**Запрос (bundled-сказка, текст от клиента):**
+```
+POST /api/tales/white_camel/narrate?page=0&voice=narrator&lang=ru
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "text": "Bir zamanlar bir devecik varmis. Onun adi Akbota..."
+}
+```
+
+**Запрос (дикторская озвучка, женский голос):**
 ```
 POST /api/tales/kolobok/narrate?page=0&voice=narrator
 Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Маша",
+  "gender": "female",
+  "narratorGender": "female"
+}
 ```
 
 **Ответ (200):**
@@ -214,12 +245,22 @@ Content-Disposition: attachment; filename="kolobok-0.mp3"
 <бинарные данные mp3>
 ```
 
-**Параметры:**
+**Query-параметры:**
 
 | Параметр | Тип    | Обязательный | Описание |
 |----------|--------|--------------|----------|
-| `page`   | int    | да           | Индекс страницы (0 .. totalPages-1) |
+| `page`   | int    | да (если нет `text`) | Индекс страницы (0 .. totalPages-1) |
 | `voice`  | string | нет          | `"narrator"` — использовать дикторский голос. Если не указан — голос пользователя |
+| `lang`   | string | нет          | Язык сказки |
+
+**Body-параметры (JSON):**
+
+| Поле     | Тип    | Обязательный | Описание |
+|----------|--------|--------------|----------|
+| `text`   | string | нет          | Готовый текст для озвучки (bundled-сказки). Если передан — `page`, `name`, `gender` игнорируются, текст из БД не загружается |
+| `name`   | string | да (если нет `text`) | Имя ребёнка для персонализации |
+| `gender` | string | да (если нет `text`) | Пол ребёнка: `"male"` или `"female"` (для персонализации текста) |
+| `narratorGender` | string | нет | Пол голоса диктора: `"male"` или `"female"`. По умолчанию `"male"`. Работает только с `voice=narrator` |
 
 > При `voice=narrator` клонированный голос **не требуется** — можно использовать без предварительного клонирования.
 
@@ -228,16 +269,16 @@ Content-Disposition: attachment; filename="kolobok-0.mp3"
 // 400 — голос не клонирован (только без voice=narrator)
 { "error": "No cloned voice. Clone your voice first via POST /api/voice/clone" }
 
-// 400 — не указана страница или индекс за пределами
+// 400 — не указана страница или индекс за пределами (только без text)
 { "error": "page parameter is required (0..3)" }
 
-// 404 — сказка не найдена
+// 400 — не указаны name/gender (только без text)
+{ "error": "name and gender are required in request body" }
+
+// 404 — сказка не найдена (только без text)
 { "error": "Tale not found" }
 
-// 503 — дикторский голос не настроен на сервере
-{ "error": "Narrator voice is not configured" }
-
-// 502 — ошибка ElevenLabs API
+// 502 — ошибка TTS API (Fish Audio / Edge TTS)
 { "error": "Failed to narrate tale", "details": "..." }
 ```
 
@@ -379,7 +420,7 @@ Content-Type: application/json
 
 ## 12. Озвучить всю книгу (async)
 
-Запускает фоновую озвучку всех страниц сказки. По умолчанию используется клонированный голос пользователя. С параметром `voice: "narrator"` — профессиональный дикторский голос. Озвучка идёт постранично, прогресс можно отслеживать через `narration-status`.
+Запускает фоновую озвучку всех страниц сказки. По умолчанию используется клонированный голос пользователя (Fish Audio). С параметром `voice: "narrator"` — дефолтный дикторский голос (Edge TTS, бесплатно). Озвучка идёт **параллельно батчами по 5 страниц** (~5× быстрее), прогресс можно отслеживать через `narration-status`.
 
 **ВАЖНО:** Перед озвучкой сервер ДОЛЖЕН персонализировать текст — подставить `name` и `gender` из тела запроса в шаблоны `{childName}` и `{m:...|f:...}`. Используется та же логика что в endpoint `/personalize`. Без этого AI будет читать вслух сырые плейсхолдеры.
 
@@ -395,7 +436,7 @@ Content-Type: application/json
 }
 ```
 
-**Запрос (дикторская озвучка):**
+**Запрос (дикторская озвучка, мужской голос):**
 ```
 POST /api/tales/kolobok/narrate-all
 Authorization: Bearer <token>
@@ -408,13 +449,28 @@ Content-Type: application/json
 }
 ```
 
+**Запрос (дикторская озвучка, женский голос):**
+```
+POST /api/tales/kolobok/narrate-all
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Маша",
+  "gender": "female",
+  "voice": "narrator",
+  "narratorGender": "female"
+}
+```
+
 **Параметры тела:**
 
 | Поле     | Тип    | Обязательный | Описание |
 |----------|--------|--------------|----------|
 | `name`   | string | да           | Имя ребёнка (для подстановки `{childName}`) |
-| `gender` | string | да           | Пол: `"male"` или `"female"` (для выбора в `{m:...\|f:...}`) |
+| `gender` | string | да           | Пол ребёнка: `"male"` или `"female"` (для персонализации текста `{m:...\|f:...}`) |
 | `voice`  | string | нет          | `"narrator"` — использовать дикторский голос. Если не указан — голос пользователя |
+| `narratorGender` | string | нет | Пол голоса диктора: `"male"` или `"female"`. По умолчанию `"male"`. Работает только с `voice: "narrator"` |
 
 > При `voice: "narrator"` клонированный голос **не требуется** — можно использовать без предварительного клонирования.
 
@@ -423,7 +479,7 @@ Content-Type: application/json
 2. Для каждой страницы выполнить персонализацию:
    - Заменить `{childName}` → `name`
    - Заменить `{m:текст|f:текст}` → выбрать вариант по `gender`
-3. Озвучить персонализированный текст через ElevenLabs API (голосом пользователя или диктора)
+3. Озвучить персонализированный текст (клонированный голос → Fish Audio, дикторский → Edge TTS)
 4. Сохранить результат
 
 **Ответ (200):**
@@ -445,8 +501,6 @@ Content-Type: application/json
 // 404 — сказка не найдена
 { "error": "Tale not found" }
 
-// 503 — дикторский голос не настроен на сервере
-{ "error": "Narrator voice is not configured" }
 ```
 
 ---
@@ -642,11 +696,13 @@ Content-Length: 45231
 
 ## 20. Иллюстрация страницы
 
-Возвращает иллюстрацию для конкретной страницы. Иллюстрации **не зависят от языка** — одни и те же картинки.
+Возвращает иллюстрацию для конкретной страницы. Иллюстрации **не зависят от языка** — одни и те же картинки. Поддерживает гендерные варианты (разные картинки для мальчиков и девочек).
 
 **Запрос:**
 ```
 GET /api/tales/kolobok/illustration/0
+GET /api/tales/kolobok/illustration/2?gender=boy
+GET /api/tales/kolobok/illustration/2?gender=girl
 Authorization: Bearer <token>
 ```
 
@@ -656,6 +712,17 @@ Authorization: Bearer <token>
 |----------|-----|-------|----------|
 | `id` | string | да | ID сказки |
 | `page` | int | да | Индекс страницы (0 .. totalPages-1) |
+
+**Query-параметры:**
+
+| Параметр | Тип | Обяз. | Описание |
+|----------|-----|-------|----------|
+| `gender` | string | нет | `"boy"` или `"girl"`. Если передан — сервер ищет `page_N_boy.{ext}` / `page_N_girl.{ext}`. Если не найден или не передан — fallback на общую `page_N.{ext}` |
+
+**Логика поиска файла:**
+1. Если `gender` передан → искать `page_N_boy.{ext}` или `page_N_girl.{ext}`
+2. Если гендерный вариант не найден или `gender` не передан → fallback на `page_N.{ext}`
+3. Если ничего не найдено → 404
 
 **Ответ (200):**
 ```
@@ -671,84 +738,12 @@ Content-Length: 128450
 // 400 — невалидный номер страницы
 { "error": "Invalid page number" }
 
+// 400 — невалидное значение gender
+{ "error": "gender must be \"boy\" or \"girl\"" }
+
 // 404 — иллюстрация не найдена
 { "error": "Illustration not found: kolobok page 5" }
 ```
-
----
-
-## 21. Дефолтная озвучка страницы (диктор)
-
-Возвращает MP3-файл дефолтной озвучки профессиональным диктором. Это НЕ AI-озвучка — это заранее записанные аудиофайлы. Озвучка **зависит от языка**.
-
-**Запрос:**
-```
-GET /api/tales/kolobok/default-narration/0?lang=ru
-Authorization: Bearer <token>
-```
-
-**Параметры:**
-
-| Параметр | Тип | Обяз. | Описание |
-|----------|-----|-------|----------|
-| `id` | string | да | ID сказки |
-| `page` | int | да | Индекс страницы (0 .. totalPages-1) |
-| `lang` | string | нет | Язык озвучки (`ru`/`kz`/`en`). По умолчанию — язык из профиля пользователя |
-
-**Ответ (200):**
-```
-Content-Type: audio/mpeg
-Content-Disposition: attachment; filename="kolobok-ru-0.mp3"
-
-<бинарные данные mp3>
-```
-
-**Ошибки:**
-```json
-// 400 — невалидный номер страницы
-{ "error": "Invalid page number" }
-
-// 404 — озвучка не найдена
-{ "error": "Default narration not found: kolobok/ru page 0" }
-```
-
----
-
-## 22. Проверка наличия дефолтной озвучки
-
-Клиенту нужно знать, есть ли дефолтная озвучка для сказки на конкретном языке, чтобы показать/скрыть кнопку «Слушать». Возвращает список доступных страниц.
-
-**Запрос:**
-```
-GET /api/tales/kolobok/default-narration?lang=ru
-Authorization: Bearer <token>
-```
-
-**Параметры:**
-
-| Параметр | Тип | Обяз. | Описание |
-|----------|-----|-------|----------|
-| `lang` | string | нет | Язык. По умолчанию — из профиля пользователя |
-
-**Ответ (200) — озвучка есть:**
-```json
-{
-  "available": true,
-  "lang": "ru",
-  "pages": [0, 1, 2, 3]
-}
-```
-
-**Ответ (200) — озвучки нет:**
-```json
-{
-  "available": false,
-  "lang": "kz",
-  "pages": []
-}
-```
-
-> Если `lang` не передан, используется язык из профиля пользователя, fallback — `"ru"`.
 
 ---
 
@@ -784,22 +779,20 @@ Authorization: Bearer <token>
 1.  GET  /health                                         → проверить что сервер жив
 2.  POST /api/auth/register                              → зарегистрироваться (имя, пол, язык) + получить токен
 3.  POST /api/voice/clone                                → загрузить голос (mp3)
-4.  GET  /api/tales?lang=ru                              → посмотреть список сказок (+ hasDefaultNarration, coverUrl)
+4.  GET  /api/tales?lang=ru                              → посмотреть список сказок (+ free, coverUrl)
 5.  GET  /api/tales/kolobok?lang=ru                      → получить сказку (pages + totalPages)
 6.  GET  /api/tales/kolobok/cover                        → загрузить обложку
 7.  GET  /api/tales/kolobok/illustration/0               → загрузить иллюстрацию страницы
-8.  GET  /api/tales/kolobok/default-narration?lang=ru    → проверить наличие дефолтной озвучки
-9.  GET  /api/tales/kolobok/default-narration/0?lang=ru  → скачать дефолтную озвучку страницы
-10. POST /api/tales/kolobok/personalize                  → персонализировать текст (имя + пол)
-11. POST /api/tales/kolobok/narrate?page=0               → озвучить одну страницу (голос пользователя)
-11b.POST /api/tales/kolobok/narrate?page=0&voice=narrator→ озвучить одну страницу (дикторский голос)
-12. POST /api/tales/kolobok/narrate-all                  → озвучить всю книгу (async, голос пользователя)
-12b.POST /api/tales/kolobok/narrate-all {voice:"narrator"}→ озвучить всю книгу (async, дикторский голос)
-13. GET  /api/tales/kolobok/narration-status             → проверить прогресс озвучки
-14. GET  /api/tales/kolobok/narration/0                  → скачать озвученную страницу
-15. POST /api/voice/drafts                               → создать черновик
-16. GET  /api/voice/drafts                               → список черновиков
-17. GET  /api/user/profile                               → получить профиль
-18. PUT  /api/user/profile                               → обновить профиль
-19. DELETE /api/voice                                    → удалить клонированный голос
+8.  POST /api/tales/kolobok/personalize                  → персонализировать текст (имя + пол)
+9.  POST /api/tales/kolobok/narrate?page=0               → озвучить одну страницу (Fish Audio, голос пользователя)
+9b. POST /api/tales/kolobok/narrate?page=0&voice=narrator→ озвучить одну страницу (Edge TTS, дикторский голос)
+10. POST /api/tales/kolobok/narrate-all                  → озвучить всю книгу (async, голос пользователя)
+10b.POST /api/tales/kolobok/narrate-all {voice:"narrator"}→ озвучить всю книгу (async, Edge TTS)
+11. GET  /api/tales/kolobok/narration-status             → проверить прогресс озвучки
+12. GET  /api/tales/kolobok/narration/0                  → скачать озвученную страницу
+13. POST /api/voice/drafts                               → создать черновик
+14. GET  /api/voice/drafts                               → список черновиков
+15. GET  /api/user/profile                               → получить профиль
+16. PUT  /api/user/profile                               → обновить профиль
+17. DELETE /api/voice                                    → удалить клонированный голос
 ```

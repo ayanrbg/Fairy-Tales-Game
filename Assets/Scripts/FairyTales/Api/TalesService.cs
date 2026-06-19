@@ -44,14 +44,15 @@ namespace FairyTales.Api
         }
 
         public IEnumerator Personalize(string taleId, string name, string gender,
-            Action<string[]> onSuccess, Action<string> onError = null)
+            Action<string[]> onSuccess, Action<string> onError = null, string lang = null)
         {
             var body = JsonUtility.ToJson(new PersonalizeRequest
             {
                 name = name, gender = gender
             });
 
-            yield return _api.PostJson($"/api/tales/{taleId}/personalize", body,
+            var query = string.IsNullOrEmpty(lang) ? "" : $"?lang={lang}";
+            yield return _api.PostJson($"/api/tales/{taleId}/personalize{query}", body,
                 json =>
                 {
                     var response = JsonConvert.DeserializeObject<PersonalizeResponse>(json);

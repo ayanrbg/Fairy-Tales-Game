@@ -1,12 +1,23 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace FairyTales.Cache
 {
     public static class AssetCache
     {
         private const int CacheVersion = 3; // v3: images stored as JPEG (was PNG)
+        // Bumped when the set of files a "downloaded" tale must contain changes.
+        // v2: both gender variants (boy+girl) are cached for gendered pages.
+        private const int IllustrationsVersion = 2;
         private static string Root => Path.Combine(Application.persistentDataPath, "cache");
+        private static readonly Dictionary<string, Sprite> SpriteCache = new();
+        // Lazy per-tale resource checks (avoids Resources.LoadAll at startup)
+        private static readonly Dictionary<string, bool> ResourceCheckCache = new();
+        private static readonly Dictionary<string, bool> IllustrationCheckCache = new();
 
         /// Call once at startup to wipe stale cache after format change.
         public static void MigrateIfNeeded()
@@ -16,8 +27,44 @@ namespace FairyTales.Cache
             ClearAll();
             PlayerPrefs.SetInt(key, CacheVersion);
             PlayerPrefs.Save();
-            Debug.Log($"[AssetCache] Migrated to v{CacheVersion}, old cache cleared");
         }
+
+        /// <summary>No-op — kept for API compatibility. Resource index is now lazy.</summary>
+        public static void InitResourceIndex() { }
+
+        /// <summary>Resource checks are lazy per-tale; load the bundled-tale set for IsBundled.</summary>
+        public static IEnumerator InitResourceIndexAsync()
+        {
+            yield return BundledTaleLoader.InitBundledSet();
+        }
+
+        public static bool HasResourceCover(string taleId)
+        {
+            if (ResourceCheckCache.TryGetValue(taleId, out var cached))
+                return cached;
+            // Probe once per tale — Resources.Load returns null fast for missing assets
+            var found = Resources.Load<Sprite>($"Covers/{taleId}") != null;
+            ResourceCheckCache[taleId] = found;
+            return found;
+        }
+
+        public static bool HasResourceIllustrations(string taleId)
+        {
+            // A bundled cover does NOT imply bundled illustrations — most tales ship
+            // only a thumbnail cover for the library. Probe the first page directly.
+            if (IllustrationCheckCache.TryGetValue(taleId, out var cached))
+                return cached;
+            var found = Resources.Load<Sprite>($"Illustrations/{taleId}/page_0") != null;
+            IllustrationCheckCache[taleId] = found;
+            return found;
+        }
+
+        // ── Parent voice ────────────────────────────────────────
+        private const string ParentVoiceKey = "parent_voice/recording.wav";
+
+        public static void SaveParentVoice(byte[] wavData) => Save(ParentVoiceKey, wavData);
+        public static byte[] LoadParentVoice() => Load(ParentVoiceKey);
+        public static bool HasParentVoice() => Exists(ParentVoiceKey);
 
         // ── Keys ─────────────────────────────────────────────
         public static string CoverKey(string taleId)
@@ -26,8 +73,77 @@ namespace FairyTales.Cache
         public static string IllustrationKey(string taleId, int page)
             => $"illustrations/{taleId}/page_{page}";
 
+        public static string IllustrationKey(string taleId, int page, string gender)
+            => $"illustrations/{taleId}/page_{page}_{gender}";
+
+        public static string TaleTextKey(string taleId, string lang)
+            => $"tales-text/{taleId}/{lang}.json";
+
         public static string NarrationKey(string taleId, string lang, int page)
             => $"narration/{taleId}/{lang}/page_{page}.mp3";
+
+        public static string AiNarrationKey(string taleId, string lang, int page)
+            => $"ai-narration/{taleId}/{lang}/page_{page}.mp3";
+
+        private static string AiNarrationMetaKey(string taleId)
+            => $"ai-narration/{taleId}/meta.json";
+
+        /// <summary>
+        /// Saves the voice/child params used for AI narration so we can detect changes.
+        /// </summary>
+        public static void SaveAiNarrationMeta(string taleId, string voice,
+            string narratorGender, string childName, string childGender)
+        {
+            var json = JsonUtility.ToJson(new AiNarrationMeta
+            {
+                voice = voice ?? "",
+                narratorGender = narratorGender ?? "",
+                childName = childName ?? "",
+                childGender = childGender ?? ""
+            });
+            Save(AiNarrationMetaKey(taleId), System.Text.Encoding.UTF8.GetBytes(json));
+        }
+
+        /// <summary>
+        /// Returns true if AI narration exists AND was generated with matching params.
+        /// </summary>
+        public static bool IsAiNarrationCached(string taleId, string lang,
+            string voice, string narratorGender, string childName, string childGender)
+        {
+            // Must have at least page 0
+            if (!Exists(AiNarrationKey(taleId, lang, 0)))
+                return false;
+
+            var metaBytes = Load(AiNarrationMetaKey(taleId));
+            if (metaBytes == null) return false;
+
+            var meta = JsonUtility.FromJson<AiNarrationMeta>(
+                System.Text.Encoding.UTF8.GetString(metaBytes));
+
+            return meta.voice == (voice ?? "")
+                && meta.narratorGender == (narratorGender ?? "")
+                && meta.childName == (childName ?? "")
+                && meta.childGender == (childGender ?? "");
+        }
+
+        /// <summary>
+        /// Deletes all cached AI narration files for a tale.
+        /// </summary>
+        public static void ClearAiNarration(string taleId)
+        {
+            var dir = Path.Combine(Root, "ai-narration", taleId);
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, true);
+        }
+
+        [Serializable]
+        private struct AiNarrationMeta
+        {
+            public string voice;
+            public string narratorGender;
+            public string childName;
+            public string childGender;
+        }
 
         // ── Queries ──────────────────────────────────────────
         public static bool Exists(string key)
@@ -40,28 +156,44 @@ namespace FairyTales.Cache
             => $"tales/{taleId}.ready";
 
         public static bool IsCoverDownloaded(string taleId)
-            => Exists(CoverKey(taleId))
-               || Resources.Load<Sprite>($"Covers/{taleId}") != null;
+            => Exists(CoverKey(taleId)) || HasResourceCover(taleId);
 
         public static bool IsTaleDownloaded(string taleId)
         {
             // Available in bundled Resources — no download needed
-            if (Resources.Load<Sprite>($"Illustrations/{taleId}/page_0") != null)
+            if (HasResourceIllustrations(taleId))
                 return true;
 
-            if (!Exists(TaleReadyKey(taleId))) return false;
-            // Verify at least the first illustration actually exists
-            if (!Exists(IllustrationKey(taleId, 0)))
+            // Available in StreamingAssets — no download needed
+            if (BundledTaleLoader.IsBundled(taleId))
+                return true;
+
+            var ready = Load(TaleReadyKey(taleId));
+            if (ready == null) return false;
+
+            // Downloaded by an older build (v1 = only the current gender's variants).
+            // Treat as not-ready so the normal download flow tops up the missing
+            // second-gender variants — DownloadImage skips files already on disk,
+            // so only what's missing is fetched.
+            if (ready.Length < 1 || ready[0] < IllustrationsVersion)
+                return false;
+
+            // Verify page 0 exists in ANY variant. Tales whose first page is
+            // gendered (e.g. baursak) have no plain page_0 on the server — only
+            // page_0_boy / page_0_girl — so checking plain alone is wrong.
+            if (!Exists(IllustrationKey(taleId, 0))
+                && !Exists(IllustrationKey(taleId, 0, "boy"))
+                && !Exists(IllustrationKey(taleId, 0, "girl")))
             {
                 Delete(TaleReadyKey(taleId));
-                Debug.LogWarning($"[AssetCache] Stale .ready for {taleId}, re-download needed");
+                // RELEASE: Debug.LogWarning($"[AssetCache] Stale .ready for {taleId}, re-download needed");
                 return false;
             }
             return true;
         }
 
         public static void MarkTaleReady(string taleId)
-            => Save(TaleReadyKey(taleId), new byte[] { 1 });
+            => Save(TaleReadyKey(taleId), new byte[] { IllustrationsVersion });
 
         // ── Read / Write ─────────────────────────────────────
         public static void Save(string key, byte[] data)
@@ -77,22 +209,62 @@ namespace FairyTales.Cache
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
 
+        /// <summary>Async sprite load via UnityWebRequest (file I/O off main thread).</summary>
+        public static IEnumerator LoadSpriteAsync(string key, Action<Sprite> cb)
+        {
+            if (SpriteCache.TryGetValue(key, out var cached) && cached != null)
+            {
+                cb?.Invoke(cached);
+                yield break;
+            }
+
+            var path = GetPath(key);
+            if (!File.Exists(path))
+            {
+                cb?.Invoke(null);
+                yield break;
+            }
+
+            var url = "file:///" + path.Replace("\\", "/");
+            using var req = UnityWebRequestTexture.GetTexture(url, nonReadable: true);
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                cb?.Invoke(null);
+                yield break;
+            }
+
+            var tex = DownloadHandlerTexture.GetContent(req);
+            var sprite = Sprite.Create(tex,
+                new Rect(0, 0, tex.width, tex.height),
+                new Vector2(0.5f, 0.5f),
+                100f, 0, SpriteMeshType.FullRect);
+            SpriteCache[key] = sprite;
+            cb?.Invoke(sprite);
+        }
+
+        [Obsolete("Use LoadSpriteAsync for non-blocking load")]
         public static Sprite LoadSprite(string key)
         {
+            if (SpriteCache.TryGetValue(key, out var cached) && cached != null)
+                return cached;
+
             var bytes = Load(key);
             if (bytes == null || bytes.Length < 8) return null;
 
             var tex = new Texture2D(2, 2);
             if (!tex.LoadImage(bytes))
             {
-                // Corrupted file — delete so it can be re-downloaded
                 Delete(key);
                 return null;
             }
 
-            return Sprite.Create(tex,
+            var sprite = Sprite.Create(tex,
                 new Rect(0, 0, tex.width, tex.height),
                 new Vector2(0.5f, 0.5f));
+            SpriteCache[key] = sprite;
+            return sprite;
         }
 
         public static void Delete(string key)
@@ -102,8 +274,11 @@ namespace FairyTales.Cache
         }
 
         // ── Maintenance ──────────────────────────────────────
+        public static void ClearSpriteCache() => SpriteCache.Clear();
+
         public static void ClearAll()
         {
+            ClearSpriteCache();
             if (Directory.Exists(Root))
                 Directory.Delete(Root, true);
         }

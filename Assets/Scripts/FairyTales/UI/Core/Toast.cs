@@ -25,7 +25,7 @@ namespace FairyTales.UI.Core
         {
             if (_instance == null)
             {
-                Debug.Log($"[Toast] {message}");
+                // RELEASE: Debug.Log($"[Toast] {message}");
                 return;
             }
             _instance.Display(message);

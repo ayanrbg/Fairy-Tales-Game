@@ -18,15 +18,22 @@ namespace FairyTales.UI.Core
         [SerializeField] private Button[] numButtons; // 0-9
         [SerializeField] private Button btnBackspace;
 
-        private int _answer;
+        private string _answer;
         private string _input = "";
         private Action _onSuccess;
+        private Action _onCancel;
+
+        private static string[] DigitWords => new[]
+        {
+            Loc.Get("digit_0"), Loc.Get("digit_1"), Loc.Get("digit_2"), Loc.Get("digit_3"), Loc.Get("digit_4"),
+            Loc.Get("digit_5"), Loc.Get("digit_6"), Loc.Get("digit_7"), Loc.Get("digit_8"), Loc.Get("digit_9")
+        };
 
         private void Awake()
         {
             _instance = this;
 
-            if (btnClose) btnClose.onClick.AddListener(Close);
+            if (btnClose) btnClose.onClick.AddListener(OnCancelButton);
             if (btnBackspace) btnBackspace.onClick.AddListener(OnBackspace);
 
             for (int i = 0; i < numButtons.Length; i++)
@@ -41,20 +48,21 @@ namespace FairyTales.UI.Core
             gameObject.SetActive(false);
         }
 
-        public static void Show(Action onSuccess)
+        public static void Show(Action onSuccess, Action onCancel = null)
         {
             if (_instance == null)
             {
-                Debug.LogWarning("[ChildGate] No instance — bypassing");
+                // RELEASE: Debug.LogWarning("[ChildGate] No instance — bypassing");
                 onSuccess?.Invoke();
                 return;
             }
-            _instance.Present(onSuccess);
+            _instance.Present(onSuccess, onCancel);
         }
 
-        private void Present(Action onSuccess)
+        private void Present(Action onSuccess, Action onCancel)
         {
             _onSuccess = onSuccess;
+            _onCancel = onCancel;
             _input = "";
             GenerateProblem();
             UpdateDisplay();
@@ -70,15 +78,17 @@ namespace FairyTales.UI.Core
 
         private void GenerateProblem()
         {
-            int a = UnityEngine.Random.Range(10, 50);
-            int b = UnityEngine.Random.Range(10, 50);
-            _answer = a + b;
-            if (problemText) problemText.text = $"{a}+{b}=?";
+            int d1 = UnityEngine.Random.Range(0, 10);
+            int d2 = UnityEngine.Random.Range(0, 10);
+            int d3 = UnityEngine.Random.Range(0, 10);
+            _answer = $"{d1}{d2}{d3}";
+            if (problemText)
+                problemText.text = $"{DigitWords[d1]}, {DigitWords[d2]}, {DigitWords[d3]}";
         }
 
         private void OnDigit(int digit)
         {
-            if (_input.Length >= 4) return;
+            if (_input.Length >= 3) return;
             _input += digit.ToString();
             UpdateDisplay();
             CheckAnswer();
@@ -100,11 +110,11 @@ namespace FairyTales.UI.Core
 
         private void CheckAnswer()
         {
-            if (!int.TryParse(_input, out int val)) return;
-            if (val != _answer) return;
+            if (_input != _answer) return;
 
             var cb = _onSuccess;
             _onSuccess = null;
+            _onCancel = null;
             Close(() => cb?.Invoke());
         }
 
@@ -120,5 +130,13 @@ namespace FairyTales.UI.Core
         }
 
         private void Close() => Close(null);
+
+        private void OnCancelButton()
+        {
+            var cb = _onCancel;
+            _onCancel = null;
+            _onSuccess = null;
+            Close(() => cb?.Invoke());
+        }
     }
 }
