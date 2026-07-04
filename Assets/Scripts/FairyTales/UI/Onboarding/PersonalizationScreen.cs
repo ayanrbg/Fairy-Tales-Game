@@ -127,7 +127,7 @@ namespace FairyTales.UI.Onboarding
 
         private IEnumerator RegisterAndRoute(string childName)
         {
-            var userId = GetOrCreateUserId();
+            var userId = AuthService.GetOrCreateUserId();
             var lang = PlayerPrefs.GetString("ft_lang", "ru");
 
             // Register / login
@@ -181,13 +181,5 @@ namespace FairyTales.UI.Onboarding
             return false;
         }
 
-        private string GetOrCreateUserId()
-        {
-            var id = PlayerPrefs.GetString("ft_userId", "");
-            if (!string.IsNullOrEmpty(id)) return id;
-            id = Guid.NewGuid().ToString();
-            PlayerPrefs.SetString("ft_userId", id);
-            return id;
-        }
     }
 }

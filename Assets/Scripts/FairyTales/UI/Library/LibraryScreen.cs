@@ -91,7 +91,7 @@ namespace FairyTales.UI.Library
         {
             if (!_registered)
             {
-                var userId = GetOrCreateUserId();
+                var userId = AuthService.GetOrCreateUserId();
                 var childName = PlayerPrefs.GetString("ft_childName", "");
                 var gender = PlayerPrefs.GetString("ft_gender", "male");
                 var lang = PlayerPrefs.GetString("ft_lang", "ru");
@@ -343,14 +343,5 @@ namespace FairyTales.UI.Library
             selectionBtnMusicOn.SetActive(!backgroundMusicManager.IsMuted);
         }
 
-        private string GetOrCreateUserId()
-        {
-            var id = PlayerPrefs.GetString("ft_userId", "");
-            if (!string.IsNullOrEmpty(id)) return id;
-
-            id = Guid.NewGuid().ToString();
-            PlayerPrefs.SetString("ft_userId", id);
-            return id;
-        }
     }
 }

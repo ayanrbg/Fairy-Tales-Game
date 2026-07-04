@@ -11,6 +11,26 @@ namespace FairyTales.Api
 
         public AuthService(ApiClient api) => _api = api;
 
+        /// <summary>
+        /// Stable per-device userId. First run seeds it from the device identifier
+        /// (survives reinstalls on the same device), then caches it in PlayerPrefs.
+        /// Falls back to a random Guid on hardware that hides the device id.
+        /// Single source of truth — all callers must use this, never Guid.NewGuid().
+        /// </summary>
+        public static string GetOrCreateUserId()
+        {
+            var id = PlayerPrefs.GetString("ft_userId", "");
+            if (!string.IsNullOrEmpty(id)) return id;
+
+            id = SystemInfo.deviceUniqueIdentifier;
+            if (string.IsNullOrEmpty(id) || id == SystemInfo.unsupportedIdentifier)
+                id = Guid.NewGuid().ToString();
+
+            PlayerPrefs.SetString("ft_userId", id);
+            PlayerPrefs.Save();
+            return id;
+        }
+
         public IEnumerator Login(string userId,
             Action onSuccess = null, Action<string> onError = null)
         {
