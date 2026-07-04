@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using FairyTales.Api;
@@ -28,6 +29,7 @@ namespace FairyTales.UI.Library
         [SerializeField] private BackgroundMusicManager backgroundMusicManager;
         
         private readonly List<TaleCard> _cardPool = new();
+        private TextMeshProUGUI _unlockLabel;
 
         private ScreenManager _screens;
         private ApiClient _api;
@@ -102,6 +104,11 @@ namespace FairyTales.UI.Library
                         // RELEASE: Debug.LogWarning($"[Library] Register: {e}");
                         _registered = true;
                     });
+
+                // Server is the source of truth for premium — reconcile on every cold start,
+                // now that the auth token is set. Safe: only downgrades on an expired sub.
+                if (IAPManager.Instance != null)
+                    IAPManager.Instance.RefreshEntitlement();
             }
 
             // Cached list was already sorted + rebuilt in OnPrepare (before the
@@ -116,13 +123,22 @@ namespace FairyTales.UI.Library
         {
             var lang = PlayerPrefs.GetString("ft_lang", "ru");
 
+            TaleSummary[] serverTales = null;
             yield return _tales.GetTales(lang,
-                onSuccess: tales => _loadedTales = tales,
+                onSuccess: tales => serverTales = tales,
                 onError: e => { } /* RELEASE: Debug.LogWarning($"[Library] Server: {e}") */);
 
-            // Offline fallback: use bundled manifest
-            if (_loadedTales == null)
+            if (serverTales != null)
             {
+                // Server is authoritative for the catalog — purge tales it removed and
+                // drop hidden/removed ones from the grid. Only runs on a FRESH server
+                // response, never on the offline bundled fallback (avoids false purges).
+                ReconcileLibrary(serverTales);
+                _loadedTales = VisibleTales(serverTales);
+            }
+            else
+            {
+                // Offline fallback: use bundled manifest (no reconciliation).
                 yield return BundledTaleLoader.LoadManifest(lang, tales => _loadedTales = tales);
             }
 
@@ -130,6 +146,28 @@ namespace FairyTales.UI.Library
 
             _loadedLang = lang;
             BuildGrid();
+        }
+
+        /// <summary>Delete local cache for any tale the server marked "removed".</summary>
+        private void ReconcileLibrary(TaleSummary[] serverTales)
+        {
+            foreach (var t in serverTales)
+            {
+                if (t != null && t.IsRemoved)
+                {
+                    AssetCache.DeleteTale(t.id);
+                    // RELEASE: Debug.Log($"[Library] Purged removed tale {t.id}");
+                }
+            }
+        }
+
+        /// <summary>Catalog minus hidden/removed tales, preserving order.</summary>
+        private static TaleSummary[] VisibleTales(TaleSummary[] serverTales)
+        {
+            var visible = new List<TaleSummary>(serverTales.Length);
+            foreach (var t in serverTales)
+                if (t != null && !t.IsHidden) visible.Add(t);
+            return visible.ToArray();
         }
 
         private void BuildGrid()
@@ -259,8 +297,30 @@ namespace FairyTales.UI.Library
 
         private void UpdateUnlockButton()
         {
-            bool subscribed = IAPManager.Instance != null && IAPManager.Instance.IsSubscribed;
-            if (btnUnlockAll) btnUnlockAll.gameObject.SetActive(!subscribed);
+            if (!btnUnlockAll) return;
+
+            var iap = IAPManager.Instance;
+            bool subscribed = iap != null && iap.IsSubscribed;
+
+            // Keep the button visible when subscribed — it now shows the expiry date
+            // instead of disappearing. Not clickable while premium is active.
+            btnUnlockAll.gameObject.SetActive(true);
+            btnUnlockAll.interactable = !subscribed;
+
+            if (_unlockLabel == null)
+                _unlockLabel = btnUnlockAll.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (!_unlockLabel) return;
+
+            if (!subscribed)
+            {
+                _unlockLabel.text = Loc.Get("unlock_all");
+                return;
+            }
+
+            var exp = iap.PremiumExpiresUtc;
+            _unlockLabel.text = exp.HasValue
+                ? Loc.Format("premium_active_until", exp.Value.ToLocalTime().ToString("dd.MM.yyyy"))
+                : Loc.Get("premium_active");
         }
 
         private void RefreshCardStates()

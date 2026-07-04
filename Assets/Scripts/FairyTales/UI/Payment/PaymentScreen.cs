@@ -129,17 +129,9 @@ namespace FairyTales.UI.Payment
 
         private void UpdateTrialButton()
         {
-            if (!txtTrialLabel) return;
-
-            var iap = IAPManager.Instance;
-            var productId = _yearlySelected
-                ? IAPManager.ProductYearly
-                : IAPManager.ProductMonthly;
-
-            bool hasTrial = iap != null && iap.IsInitialized && iap.HasTrialAvailable(productId);
-            txtTrialLabel.text = hasTrial
-                ? Loc.Get("start_trial")
-                : Loc.Get("subscribe");
+            // Trial eligibility is decided by the store, not shown in the UI.
+            // The CTA is always "Попробовать бесплатно" on every language.
+            if (txtTrialLabel) txtTrialLabel.text = Loc.Get("start_trial");
         }
 
         private void OnPurchase()
